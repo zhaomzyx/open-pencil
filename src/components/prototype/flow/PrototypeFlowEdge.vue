@@ -14,6 +14,7 @@ const {
   labelScale,
   description,
   active = false,
+  pinned = false,
   dimmed = false
 } = defineProps<{
   path: FlowEdgePath
@@ -23,11 +24,12 @@ const {
   labelScale: number
   description: string
   active?: boolean
+  pinned?: boolean
   dimmed?: boolean
 }>()
 
 const emit = defineEmits<{
-  'open-source': [sourceId: string]
+  pin: [edgeId: string]
   hover: [edgeId: string | null]
 }>()
 
@@ -59,7 +61,7 @@ const PrototypeFlowEdgeLine = () =>
         'pointer-events': 'stroke',
         class: 'cursor-pointer',
         onPointerdown: (event: PointerEvent) => event.stopPropagation(),
-        onClick: withModifiers(() => emit('open-source', path.edge.sourceId), ['stop'])
+        onClick: withModifiers(() => emit('pin', path.edge.id), ['stop'])
       })
     ]
   )
@@ -84,6 +86,7 @@ const PrototypeFlowEdgeLine = () =>
       data-flow-interactive
       :data-source-id="path.edge.sourceId"
       :aria-label="description"
+      :aria-pressed="pinned"
       :class="[
         'pointer-events-auto absolute flex w-max max-w-32 cursor-pointer flex-col rounded-sm bg-(--flow-edge-color) px-2 py-1 text-start text-on-flow-edge',
         focusStyles.ring
@@ -94,7 +97,7 @@ const PrototypeFlowEdgeLine = () =>
         transform: `translate(-50%, -50%) scale(${labelScale})`
       }"
       @pointerdown.stop
-      @click.stop="emit('open-source', path.edge.sourceId)"
+      @click.stop="emit('pin', path.edge.id)"
       @focus="emit('hover', path.edge.id)"
       @blur="emit('hover', null)"
     >

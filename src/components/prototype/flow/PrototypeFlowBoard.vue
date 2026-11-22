@@ -11,6 +11,7 @@ import IconButton from '@/components/ui/button/IconButton.vue'
 
 import {
   createFlowEdgePaths,
+  createFlowSourceCue,
   flowCardBounds,
   resolveFlowPositions,
   type FlowBounds
@@ -43,7 +44,6 @@ const { flow, positions, thumbnails } = defineProps<{
 }>()
 const emit = defineEmits<{
   move: [id: string, point: FlowPoint]
-  'open-source': [sourceId: string]
   play: [frameId: string | null]
   arrange: []
 }>()
@@ -57,6 +57,8 @@ const cardDrag = shallowRef<CardDrag | null>(null)
 const selectedFrameId = ref<string | null>(null)
 let cardPointerDragged = false
 const hoveredEdgeId = ref<string | null>(null)
+const pinnedEdgeId = ref<string | null>(null)
+const activeEdgeId = computed(() => pinnedEdgeId.value ?? hoveredEdgeId.value)
 const hasFitted = ref(false)
 
 const MIN_ZOOM = 0.08
@@ -96,6 +98,13 @@ const worldSize = computed(() => ({
   height: Math.max(600, routeBounds.value.maxY + ROUTE_MARGIN)
 }))
 const edgePaths = computed(() => createFlowEdgePaths(flow, dragAdjustedPositions.value))
+const sourceCue = computed(() => {
+  const path = edgePaths.value.find(({ edge }) => edge.id === activeEdgeId.value)
+  if (!path) return null
+  const frame = flow.frames.find(({ id }) => id === path.edge.from)
+  const point = dragAdjustedPositions.value.get(path.edge.from)
+  return frame && point ? createFlowSourceCue(path, frame, point) : null
+})
 const contentBounds = computed<FlowBounds>(() => {
   const bounds = { ...cardBounds.value }
   for (const edge of edgePaths.value) {
@@ -182,6 +191,10 @@ watch(
   (chart) => {
     if (selectedFrameId.value && !chart.frames.some(({ id }) => id === selectedFrameId.value))
       selectedFrameId.value = null
+    if (hoveredEdgeId.value && !chart.edges.some(({ id }) => id === hoveredEdgeId.value))
+      hoveredEdgeId.value = null
+    if (pinnedEdgeId.value && !chart.edges.some(({ id }) => id === pinnedEdgeId.value))
+      pinnedEdgeId.value = null
   },
   { flush: 'post' }
 )
@@ -227,7 +240,11 @@ function movePan(event: PointerEvent) {
 function finishPan(event: PointerEvent) {
   const drag = panDrag.value
   if (drag?.pointerId !== event.pointerId) return
-  if (!drag.moved && drag.clearSelectionOnClick) selectedFrameId.value = null
+  if (!drag.moved && drag.clearSelectionOnClick) {
+    selectedFrameId.value = null
+    hoveredEdgeId.value = null
+    pinnedEdgeId.value = null
+  }
   panDrag.value = null
 }
 
@@ -343,10 +360,6 @@ async function arrangeFlow() {
   await nextTick()
   fitToView()
 }
-
-function openSource(sourceId: string) {
-  emit('open-source', sourceId)
-}
 </script>
 
 <template>
@@ -402,10 +415,12 @@ function openSource(sourceId: string) {
         :paths="edgePaths"
         :frame-names="frameNames"
         :label-scale="labelInverseScale"
-        :active-edge-id="hoveredEdgeId"
+        :active-edge-id="activeEdgeId"
+        :pinned-edge-id="pinnedEdgeId"
         :selected-frame-id="selectedFrameId"
+        :source-cue="sourceCue"
         @hover="hoveredEdgeId = $event"
-        @open-source="openSource"
+        @pin="pinnedEdgeId = $event"
       />
     </div>
 

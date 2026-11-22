@@ -27,7 +27,6 @@ import { AppDialogClose, AppDialogRoot } from '@/components/ui/dialog'
 import PrototypeFlowBoard from './PrototypeFlowBoard.vue'
 
 const open = defineModel<boolean>('open', { required: true })
-const emit = defineEmits<{ openSource: [nodeId: string] }>()
 const store = useEditorStore()
 const { common, panels } = useI18n()
 const pageId = computed(() => store.state.currentPageId)
@@ -175,7 +174,9 @@ watch(
       const scale = Math.min(2, THUMBNAIL_EDGE / Math.max(1, frame.width, frame.height))
       let png: Uint8Array<ArrayBuffer> | null
       try {
-        png = await store.renderExportImage([frame.id], scale, 'PNG', page)
+        png = await store.renderExportImage([frame.id], scale, 'PNG', page, {
+          useAbsoluteBounds: true
+        })
       } catch {
         png = null
       }
@@ -190,11 +191,6 @@ watch(
   { immediate: true }
 )
 onBeforeUnmount(clearThumbnails)
-
-function openSource(nodeId: string) {
-  open.value = false
-  emit('openSource', nodeId)
-}
 </script>
 
 <template>
@@ -220,7 +216,6 @@ function openSource(nodeId: string) {
       @move="moveCard"
       @arrange="arrangeFlow"
       @play="playFlow"
-      @open-source="openSource"
     />
     <div v-else class="grid flex-1 place-items-center bg-panel-secondary px-4 text-sm text-muted">
       {{ panels.prototypeFlowEmpty }}

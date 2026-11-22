@@ -1,4 +1,10 @@
 import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
+import { clipPolygon, visualBoundsCorners } from '@open-pencil/scene-graph/clipping'
+import { getAxisAlignedWorldBounds, getWorldMatrix } from '@open-pencil/scene-graph/coordinate'
+import { computeBounds } from '@open-pencil/scene-graph/geometry'
+import Matrix from '@open-pencil/scene-graph/matrix'
+import { clipsChildren } from '@open-pencil/scene-graph/node-defaults'
+import type { Rect, Vector } from '@open-pencil/scene-graph/primitives'
 import {
   prototypeTarget,
   readPrototype,
@@ -24,6 +30,8 @@ export interface PrototypeFlowEdge {
   to: string
   sourceId: string
   sourceName: string
+  /** Trigger bounds in the source frame's absolute PNG crop, normalized to 0..1. */
+  sourceBounds: Rect | null
   kind: 'navigate' | 'openOverlay' | 'swapOverlay'
   conditions: string[]
 }
@@ -48,6 +56,10 @@ const COLUMN_STEP = 336
 const ROW_STEP = 384
 const CONDITION_OPERATORS = { gt: '>', eq: '=', lt: '<' } as const
 
+function hasPositiveSize({ width, height }: FlowFrameSize) {
+  return Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0
+}
+
 export function flowFrameSize(frame: Pick<PrototypeFlowFrame, 'width' | 'height'>): FlowFrameSize {
   const sourceWidth =
     Number.isFinite(frame.width) && frame.width > 0 ? frame.width : FALLBACK_FRAME_WIDTH
@@ -61,12 +73,63 @@ export function flowFrameSize(frame: Pick<PrototypeFlowFrame, 'width' | 'height'
   }
 }
 
+function sourceBoundsInCrop(
+  graph: SceneGraph,
+  node: SceneNode,
+  frameId: string,
+  crop: Rect,
+  corners: Map<string, Vector[]>
+): Rect | null {
+  if (!hasPositiveSize(crop) || !hasPositiveSize(node)) return null
+  if (node.id === frameId) return { x: 0, y: 0, width: 1, height: 1 }
+
+  function worldCorners(layer: SceneNode): Vector[] {
+    const cached = corners.get(layer.id)
+    if (cached) return cached
+    const world = getWorldMatrix(layer, graph)
+    const points = visualBoundsCorners({
+      minX: 0,
+      minY: 0,
+      maxX: layer.width,
+      maxY: layer.height
+    }).map((point) => Matrix.mapPoint(world, point))
+    corners.set(layer.id, points)
+    return points
+  }
+
+  let polygon = clipPolygon(
+    worldCorners(node),
+    visualBoundsCorners({
+      minX: crop.x,
+      minY: crop.y,
+      maxX: crop.x + crop.width,
+      maxY: crop.y + crop.height
+    })
+  )
+  let parent = node.parentId ? graph.getNode(node.parentId) : undefined
+  while (polygon && parent) {
+    if (clipsChildren(parent)) {
+      if (!hasPositiveSize(parent)) return null
+      polygon = clipPolygon(polygon, worldCorners(parent))
+    }
+    if (parent.id === frameId) break
+    parent = parent.parentId ? graph.getNode(parent.parentId) : undefined
+  }
+  if (!polygon) return null
+
+  const bounds = computeBounds(polygon.map(({ x, y }) => ({ x, y, width: 0, height: 0 })))
+  const x = Math.max(0, (bounds.x - crop.x) / crop.width)
+  const y = Math.max(0, (bounds.y - crop.y) / crop.height)
+  const right = Math.min(1, (bounds.x - crop.x + bounds.width) / crop.width)
+  const bottom = Math.min(1, (bounds.y - crop.y + bounds.height) / crop.height)
+  return right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null
+}
+
 function collectEdges(
   graph: SceneGraph,
   screens: ReadonlySet<string>,
   edges: PrototypeFlowEdge[],
-  frameId: string,
-  node: SceneNode,
+  source: Pick<PrototypeFlowEdge, 'from' | 'sourceId' | 'sourceName' | 'sourceBounds'>,
   actions: readonly PrototypeAction[],
   path = '',
   conditions: string[] = []
@@ -76,19 +139,17 @@ function collectEdges(
     if (action.type === 'ifNumber') {
       const name = graph.variables.get(action.variableId)?.name ?? action.variableId
       const condition = `${name} ${CONDITION_OPERATORS[action.operator]} ${action.value}`
-      collectEdges(graph, screens, edges, frameId, node, action.actions, actionPath, [
+      collectEdges(graph, screens, edges, source, action.actions, actionPath, [
         ...conditions,
         condition
       ])
     }
     if (!('targetId' in action) || !screens.has(action.targetId)) continue
-    if (action.type !== 'navigate' && action.targetId === frameId) continue
+    if (action.type !== 'navigate' && action.targetId === source.from) continue
     edges.push({
-      id: `${node.id}${actionPath}:${action.targetId}`,
-      from: frameId,
+      ...source,
+      id: `${source.sourceId}${actionPath}:${action.targetId}`,
       to: action.targetId,
-      sourceId: node.id,
-      sourceName: node.name,
       kind: action.type,
       conditions
     })
@@ -103,16 +164,15 @@ export function readPrototypeFlow(graph: SceneGraph, pageId: string): PrototypeF
     .sort((a, b) => Number(b.start) - Number(a.start) || a.node.y - b.node.y || a.node.x - b.node.x)
 
   const screenIds = new Set(screens.map(({ node }) => node.id))
-  const frames = screens.map(({ node, start }) => ({
-    id: node.id,
-    name: node.name,
-    width: node.width,
-    height: node.height,
-    start
-  }))
+  const frames: PrototypeFlowFrame[] = []
   const edges: PrototypeFlowEdge[] = []
 
-  for (const { node: frame } of screens) {
+  for (const { node: frame, start } of screens) {
+    const crop = getAxisAlignedWorldBounds(frame, graph)
+    const size = hasPositiveSize(frame) && hasPositiveSize(crop) ? crop : frame
+    frames.push({ id: frame.id, name: frame.name, width: size.width, height: size.height, start })
+
+    const corners = new Map<string, Vector[]>()
     const nodes = [frame, ...graph.flattenTree(frame.id).map(({ node }) => node)]
     for (const node of nodes) {
       const actions = readPrototype(node).actions
@@ -121,7 +181,20 @@ export function readPrototypeFlow(graph: SceneGraph, pageId: string): PrototypeF
         graph.closest(node.id, (layer) => !layer.visible || layer.internalOnly)
       )
         continue
-      collectEdges(graph, screenIds, edges, frame.id, node, actions)
+      collectEdges(
+        graph,
+        screenIds,
+        edges,
+        {
+          from: frame.id,
+          sourceId: node.id,
+          sourceName: node.name,
+          sourceBounds: hasPositiveSize(frame)
+            ? sourceBoundsInCrop(graph, node, frame.id, crop, corners)
+            : null
+        },
+        actions
+      )
     }
   }
   return { frames, edges }

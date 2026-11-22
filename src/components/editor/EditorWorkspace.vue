@@ -221,14 +221,6 @@ function activateDockPanel(id: WorkspaceDockPanel) {
 
 const flowOpen = ref(false)
 
-function openFlowSource(id: string) {
-  if (!store.graph.getNode(id)) return
-  panelDock.value?.reveal('prototype')
-  activateDockPanel('prototype')
-  store.select([id])
-  store.revealNodes([id])
-}
-
 watchEffect(() => {
   if (
     (!showLint.value && propertiesTab.value === 'lint') ||
@@ -398,7 +390,7 @@ const { pending: roomPending } = useRoomActions()
     </div>
   </div>
 
-  <PrototypeFlowDialog v-model:open="flowOpen" @open-source="openFlowSource" />
+  <PrototypeFlowDialog v-model:open="flowOpen" />
   <VariablesDialog />
   <StatusesDialog />
   <CommentDeleteDialog />

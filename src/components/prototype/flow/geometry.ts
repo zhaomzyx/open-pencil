@@ -24,10 +24,18 @@ export interface FlowBounds {
 export interface FlowEdgePath {
   edge: FlowEdge
   path: string
+  start: FlowPoint
+  sourceSide: FlowSide
   label: FlowPoint
   bounds: FlowBounds
   sourceName: string
   conditions: string[]
+}
+
+export interface FlowSourceCue {
+  edge: FlowEdge
+  outline: NonNullable<FlowEdge['sourceBounds']>
+  leader: string | null
 }
 
 interface AnchorRequest {
@@ -50,6 +58,7 @@ const ANCHOR_STEP = 28
 const ANCHOR_MIN_SPAN = 76
 const ANCHOR_MAX_RATIO = 0.6
 const SELF_LOOP_GAP = 26
+const CARD_BORDER_WIDTH = 1
 const SIDE_DIRECTION = {
   top: { x: 0, y: -1 },
   right: { x: 1, y: 0 },
@@ -150,7 +159,7 @@ function cubicRoute(
   controlB: FlowPoint,
   end: FlowPoint,
   labelPosition: number
-): Pick<FlowEdgePath, 'path' | 'label' | 'bounds'> {
+): Pick<FlowEdgePath, 'path' | 'start' | 'label' | 'bounds'> {
   const path = [
     `M ${roundCoordinate(start.x)} ${roundCoordinate(start.y)}`,
     `C ${roundCoordinate(controlA.x)} ${roundCoordinate(controlA.y)}`,
@@ -159,6 +168,7 @@ function cubicRoute(
   ].join(' ')
   return {
     path,
+    start,
     label: cubicPoint(start, controlA, controlB, end, labelPosition),
     bounds: {
       minX: Math.min(start.x, controlA.x, controlB.x, end.x),
@@ -169,7 +179,11 @@ function cubicRoute(
   }
 }
 
-function selfLoopPath(point: FlowPoint, size: FlowFrameSize, index: number) {
+function selfLoopPath(
+  point: FlowPoint,
+  size: FlowFrameSize,
+  index: number
+): Pick<FlowEdgePath, 'path' | 'start' | 'sourceSide' | 'label' | 'bounds'> {
   const extension = index * SELF_LOOP_GAP
   const start = {
     x: point.x + size.width,
@@ -182,7 +196,46 @@ function selfLoopPath(point: FlowPoint, size: FlowFrameSize, index: number) {
   const controlA = outwardPoint(start, 'right', 90 + extension)
   const controlB = outwardPoint(end, 'top', 104 + extension)
 
-  return cubicRoute(start, controlA, controlB, end, 0.48)
+  return { ...cubicRoute(start, controlA, controlB, end, 0.48), sourceSide: 'right' }
+}
+
+export function createFlowSourceCue(
+  path: FlowEdgePath,
+  frame: FlowFrame,
+  point: FlowPoint
+): FlowSourceCue | null {
+  const { edge, start, sourceSide } = path
+  const source = edge.sourceBounds
+  if (!source || frame.width <= 0 || frame.height <= 0) return null
+
+  const size = flowFrameSize(frame)
+  // Match the thumbnail's object-contain box inside the card border.
+  const scale = Math.min(
+    (size.width - CARD_BORDER_WIDTH * 2) / frame.width,
+    (size.height - CARD_BORDER_WIDTH * 2) / frame.height
+  )
+  if (scale <= 0) return null
+  const imageWidth = frame.width * scale
+  const imageHeight = frame.height * scale
+  const outline = {
+    x: point.x + (size.width - imageWidth) / 2 + source.x * imageWidth,
+    y: point.y + (size.height - imageHeight) / 2 + source.y * imageHeight,
+    width: source.width * imageWidth,
+    height: source.height * imageHeight
+  }
+  if (edge.sourceId === frame.id) return { edge, outline, leader: null }
+
+  const center = centerOf(outline, outline)
+  const dx = start.x - center.x
+  const dy = start.y - center.y
+  const distance = Math.max(Math.abs((2 * dx) / outline.width), Math.abs((2 * dy) / outline.height))
+  if (distance <= 1) return { edge, outline, leader: null }
+
+  const end = { x: center.x + dx / distance, y: center.y + dy / distance }
+  const horizontal = sourceSide === 'left' || sourceSide === 'right'
+  const control = horizontal ? { x: end.x, y: start.y } : { x: start.x, y: end.y }
+  const coords = ({ x, y }: FlowPoint) => `${roundCoordinate(x)} ${roundCoordinate(y)}`
+  return { edge, outline, leader: `M ${coords(start)} Q ${coords(control)} ${coords(end)}` }
 }
 
 export function resolveFlowPositions(
@@ -323,6 +376,7 @@ export function createFlowEdgePaths(
       {
         edge,
         ...cubicRoute(start, controlA, controlB, end, 0.5),
+        sourceSide: sides.source,
         sourceName: edge.sourceName,
         conditions
       }
