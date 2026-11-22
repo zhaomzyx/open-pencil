@@ -45,6 +45,7 @@ import { createLineEndActions } from './line-ends'
 import { createMovePolicy } from './move-policy'
 import { createNodeActions } from './nodes/actions'
 import { createPageActions } from './pages'
+import { createPrototypeActions } from './prototype'
 import { createReadOnlyActions, guardEdits, guardUndo } from './read-only'
 import { createCanvasRenderers } from './renderers'
 import { createSelectionActions } from './selection'
@@ -399,6 +400,7 @@ export function createEditor(options?: EditorOptions) {
     // Canvas and frame guides
     ...guides,
     ...designIssues,
+    ...createPrototypeActions(ctx),
 
     // Shapes & tools
     ...shapeActions,

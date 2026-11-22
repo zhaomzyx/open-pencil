@@ -28,6 +28,7 @@
   "vectorizeCredentialFailed": "{error}. Atualize-a em Configurações → Serviços de imagem.",
   "vectorizeFailed": "{provider} não conseguiu vetorizar esta imagem: {error}",
   "operationFailed": "A operação falhou: {error}",
+  "pageKeptForUnsavedChanges": "A página continua aberta. Salve as alterações em {names} antes de recarregar ou sair.",
   "storageConnected": "Conectado. O namespace de armazenamento está pronto.",
   "storageConnectionFailed": "Não foi possível conectar ao armazenamento: {error}",
   "deepLinkLocateFile": "Localize “{file}” para seguir este link.",

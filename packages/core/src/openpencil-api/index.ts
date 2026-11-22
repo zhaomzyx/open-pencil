@@ -41,10 +41,12 @@ import {
   writeTextDirection,
   writeTextMarkdown
 } from './nodes'
+import { inspectPrototype } from './prototype'
 import { getStatus, listStatuses, setStatus, type StatusInfo } from './statuses'
 import { bindVariable, unbindVariable, type VariableRef } from './variables'
 
 export { BehaviourHandle, type NodeRef } from './behaviours'
+export { inspectPrototype } from './prototype'
 export type { StatusInfo } from './statuses'
 export type { VariableRef } from './variables'
 export {
@@ -117,6 +119,11 @@ export class OpenPencilAPI {
   /** Let a layer field go of its variable, keeping the value the variable last gave it. */
   unbindVariable(node: NodeRef, field: string): void {
     unbindVariable(this.#graph, node, field)
+  }
+
+  /** A layer's click actions in execution order, with their target and variable references. */
+  getPrototype(node: NodeRef) {
+    return inspectPrototype(this.#graph, nodeOf(this.#graph, node))
   }
 
   /** The behaviour kinds, after Reka UI's primitives, with the values and parts each binds. */

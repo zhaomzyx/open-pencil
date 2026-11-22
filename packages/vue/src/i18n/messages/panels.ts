@@ -4,6 +4,7 @@ import { i18n } from '#vue/i18n/create'
 import { behaviourPanelMessageDefaults } from '#vue/i18n/messages/panels/behaviours'
 import { libraryPanelMessageDefaults } from '#vue/i18n/messages/panels/libraries'
 import { pickerPanelMessageDefaults } from '#vue/i18n/messages/panels/pickers'
+import { prototypePanelMessageDefaults } from '#vue/i18n/messages/panels/prototype'
 
 /**
  * The `panels` namespace: the side panels and the property sections. Messages of its larger
@@ -14,6 +15,8 @@ export const panelMessageDefaults = {
   untitled: 'Untitled',
   individualPadding: 'Individual padding',
   layers: 'Layers',
+  floatPanel: 'Float panel',
+  dockPanel: 'Dock panel',
   pages: 'Pages',
   design: 'Design',
   code: 'Code',
@@ -205,6 +208,7 @@ export const panelMessageDefaults = {
   deleteSlotContents: 'Delete contents',
   slotActions: params('{name} actions'),
   ...behaviourPanelMessageDefaults,
+  ...prototypePanelMessageDefaults,
   searchComponentProperties: 'Search properties',
   noComponentProperties: 'No properties found',
   slots: 'Slots',

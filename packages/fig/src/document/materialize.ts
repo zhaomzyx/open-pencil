@@ -2,6 +2,11 @@ import type { NodeChange } from '@open-pencil/kiwi/fig/codec'
 import { guidToString } from '@open-pencil/kiwi/fig/guid'
 import { generateId, SceneGraph, type SceneNode } from '@open-pencil/scene-graph'
 import { OPEN_PENCIL_PLUGIN_DATA } from '@open-pencil/scene-graph/plugin-data'
+import {
+  mapPrototypeReferences,
+  prototypePatch,
+  readPrototype
+} from '@open-pencil/scene-graph/prototype'
 import { remapStyleRunReferences } from '@open-pencil/scene-graph/text'
 
 import {
@@ -420,6 +425,7 @@ function materializeReaderInto(
   }
   // These passes apply to the nodes this page added, not to the whole graph.
   const materialized = [...graph.nodes.values()].filter((node) => !existingNodeIds.has(node.id))
+  linkPrototypeTargets(state, pages, materialized, existingNodeIds)
   state.definitionTypes ??= seedDefinitionTypes(graph)
   linkComponentPropertyValues(graph, sources, materialized, state.definitionTypes)
   graph.preserveSourceMetadataDuring(() => {
@@ -430,4 +436,35 @@ function materializeReaderInto(
     applyDocumentValueBindings(graph, materialized)
   })
   return state
+}
+
+function linkPrototypeTargets(
+  { graph, sources }: AssemblyState,
+  pages: readonly InstanceOccurrence[],
+  materialized: readonly SceneNode[],
+  existingNodeIds: ReadonlySet<string>
+): void {
+  for (const node of materialized) {
+    const spec = readPrototype(node)
+    if (spec.actions?.length)
+      Object.assign(
+        node,
+        prototypePatch(
+          node,
+          mapPrototypeReferences(
+            spec,
+            (id) => sources.get(id) ?? id,
+            (id) => id
+          )
+        )
+      )
+  }
+  for (const page of pages) {
+    const start = page.properties.prototypeStartNodeID
+    const layerId = start && sources.get(guidToString(start))
+    const layer = layerId && graph.getNode(layerId)
+    if (layer && layer.parentId === sources.get(page.sourceId) && !existingNodeIds.has(layer.id)) {
+      Object.assign(layer, prototypePatch(layer, { ...readPrototype(layer), start: true }))
+    }
+  }
 }

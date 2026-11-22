@@ -469,6 +469,7 @@ export interface NodeChange {
   verticalConstraint?: string
   // Prototype
   prototypeStartNodeID?: GUID
+  prototypeStartingPoint?: { name?: string; description?: string; position?: string }
   prototypeInteractions?: unknown[]
   transitionInfo?: unknown
   // Variables

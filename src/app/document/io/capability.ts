@@ -30,3 +30,16 @@ export async function pickBrowserSaveFile(
   if (!IS_BROWSER || typeof window.showSaveFilePicker !== 'function') return null
   return window.showSaveFilePicker(options)
 }
+
+/** A handle loaded from IndexedDB may need a new read grant from the user's click. */
+export async function requestBrowserFileRead(handle: FileSystemFileHandle): Promise<void> {
+  if ('requestPermission' in handle && typeof handle.requestPermission === 'function') {
+    const grant: unknown = await handle.requestPermission()
+    if (grant !== 'granted') {
+      throw new DOMException(
+        'File access was declined. Choose the file again to reopen it.',
+        'NotAllowedError'
+      )
+    }
+  }
+}

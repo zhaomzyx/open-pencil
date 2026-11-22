@@ -19,6 +19,7 @@
   "vectorizeCredentialFailed": "{error}。設定 → 画像サービスで更新してください。",
   "vectorizeFailed": "{provider} でこの画像をベクター化できませんでした: {error}",
   "operationFailed": "操作に失敗しました: {error}",
+  "pageKeptForUnsavedChanges": "ページを開いたままにしました。再読み込みや移動の前に、{names} の変更を保存してください。",
   "storageConnected": "接続しました。ストレージ名前空間を使用できます。",
   "storageConnectionFailed": "ストレージに接続できませんでした: {error}",
   "nodeID": "ノード ID",

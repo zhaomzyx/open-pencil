@@ -3,12 +3,19 @@ import { expectDefined } from '@open-pencil/test-support/assert'
 import { expect, test, useEditorSetup } from '#tests/e2e/fixtures'
 const editor = useEditorSetup('/?test')
 
-test('layers panel resize increases width', async () => {
+test('the layers and properties share a resizable dock on the right', async () => {
   const panel = editor.page.getByTestId('layers-panel')
   const before = await panel.boundingBox()
   expect(before).not.toBeNull()
 
-  const handle = editor.page.getByTestId('left-splitter-handle')
+  const properties = expectDefined(
+    await editor.page.getByTestId('properties-panel').boundingBox(),
+    'properties bounds'
+  )
+  const layers = expectDefined(before, 'layer bounds')
+  expect(layers.x).toBeCloseTo(properties.x, 0)
+  expect(layers.y).toBeGreaterThanOrEqual(properties.y + properties.height - 1)
+  const handle = editor.page.getByTestId('right-splitter-handle')
   const handleBox = await handle.boundingBox()
   expect(handleBox).not.toBeNull()
 
@@ -19,7 +26,7 @@ test('layers panel resize increases width', async () => {
 
   await editor.page.mouse.move(cx, cy)
   await editor.page.mouse.down()
-  await editor.page.mouse.move(cx + 80, cy, { steps: 10 })
+  await editor.page.mouse.move(cx - 80, cy, { steps: 10 })
   await editor.page.mouse.up()
   await editor.canvas.waitForRender()
 
@@ -47,6 +54,47 @@ test('panel width persists after page reload', async () => {
   editor.canvas.assertNoErrors()
 })
 
+test('a panel floats, keeps its position on reload, and docks back on the right', async () => {
+  const { page } = editor
+  const panel = page.getByTestId('workspace-panel-layers')
+  const handle = page.getByTestId('workspace-panel-drag-layers')
+  const dock = page.getByTestId('workspace-panel-dock')
+  await expect(panel).toHaveAttribute('data-placement', 'docked')
+
+  async function dragPanel(x: number, y: number) {
+    const box = expectDefined(await handle.boundingBox(), 'panel drag handle bounds')
+    await page.mouse.move(box.x + 12, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(x, y, { steps: 8 })
+    await page.mouse.up()
+  }
+
+  await dragPanel(340, 210)
+  await expect(panel).toHaveAttribute('data-placement', 'floating')
+  await expect(panel.getByTestId('layers-tree')).toBeVisible()
+  const floating = expectDefined(await panel.boundingBox(), 'floating panel bounds')
+
+  await page.reload()
+  await editor.canvas.waitForInit()
+  await expect(panel).toHaveAttribute('data-placement', 'floating')
+  await expect.poll(async () => (await panel.boundingBox())?.x).toBeCloseTo(floating.x, 0)
+  await expect.poll(async () => (await panel.boundingBox())?.y).toBeCloseTo(floating.y, 0)
+
+  const drop = expectDefined(await dock.boundingBox(), 'panel dock bounds')
+  await dragPanel(drop.x + drop.width / 2, drop.y + drop.height / 4)
+  await expect(dock.getByTestId('workspace-panel-layers')).toHaveAttribute(
+    'data-placement',
+    'docked'
+  )
+  const properties = expectDefined(
+    await page.getByTestId('workspace-panel-properties').boundingBox(),
+    'properties bounds'
+  )
+  const layers = expectDefined(await panel.boundingBox(), 'docked layers bounds')
+  expect(layers.y).toBeLessThan(properties.y)
+  editor.canvas.assertNoErrors()
+})
+
 /** Marks the canvases on screen, so a later check can tell whether they are the same elements. */
 async function markCanvases() {
   return editor.page.evaluate(() => {
@@ -68,7 +116,7 @@ async function keptCanvases() {
 // starting a new one, which costs every WebGL context it holds.
 test('Cmd+Backslash hides panels and keeps the canvas', async () => {
   const shown = await markCanvases()
-  await editor.page.keyboard.press('Meta+\\')
+  await editor.page.keyboard.press('ControlOrMeta+\\')
   await editor.canvas.waitForRender()
 
   await expect(editor.page.getByTestId('layers-panel')).not.toBeVisible()
@@ -78,7 +126,7 @@ test('Cmd+Backslash hides panels and keeps the canvas', async () => {
 
 test('Cmd+Backslash shows panels again and keeps the canvas', async () => {
   const hidden = await markCanvases()
-  await editor.page.keyboard.press('Meta+\\')
+  await editor.page.keyboard.press('ControlOrMeta+\\')
   await editor.canvas.waitForRender()
 
   await expect(editor.page.getByTestId('layers-panel')).toBeVisible()
@@ -110,8 +158,8 @@ test('the properties panel reopens at one width on a narrow and a wide window', 
       'right splitter handle bounds'
     )
     await page.mouse.click(handle.x + handle.width / 2, handle.y + handle.height / 2)
-    await page.keyboard.press('Meta+\\')
-    await page.keyboard.press('Meta+\\')
+    await page.keyboard.press('ControlOrMeta+\\')
+    await page.keyboard.press('ControlOrMeta+\\')
     await expect(panel).toBeVisible()
 
     // A fixed width is a repeating share of 1920 px; saved, it would reopen narrower at 1280 px.
@@ -132,8 +180,8 @@ test('a keyboard resize survives a reload and hiding the panels', async () => {
     expectDefined(await panel.boundingBox(), 'layers panel bounds').width
   const before = await panelWidth()
 
-  await editor.page.getByTestId('left-splitter-handle').focus()
-  await editor.page.keyboard.press('ArrowRight')
+  await editor.page.getByTestId('right-splitter-handle').focus()
+  await editor.page.keyboard.press('ArrowLeft')
   const resized = await panelWidth()
   expect(resized).toBeGreaterThan(before + 2)
 
@@ -141,8 +189,8 @@ test('a keyboard resize survives a reload and hiding the panels', async () => {
   await editor.canvas.waitForInit()
   expect(Math.abs((await panelWidth()) - resized)).toBeLessThanOrEqual(1)
 
-  await editor.page.keyboard.press('Meta+\\')
-  await editor.page.keyboard.press('Meta+\\')
+  await editor.page.keyboard.press('ControlOrMeta+\\')
+  await editor.page.keyboard.press('ControlOrMeta+\\')
   await expect(panel).toBeVisible()
   expect(Math.abs((await panelWidth()) - resized)).toBeLessThanOrEqual(1)
   editor.canvas.assertNoErrors()

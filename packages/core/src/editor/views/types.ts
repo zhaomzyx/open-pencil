@@ -1,3 +1,4 @@
+import type { PrototypePlayer } from '#core/editor/play/prototype'
 import type { EditorState, Tool } from '#core/editor/types'
 
 /**
@@ -42,7 +43,12 @@ export interface EditorRestrictions {
  * What a canvas pane shows: the design being edited, or the design running as a preview whose
  * controls respond to the pointer. Each pane has its own.
  */
-export type CanvasView = { id: 'edit' } | { id: 'play'; revision: number }
+export interface LivePreview {
+  revision: number
+  player?: PrototypePlayer
+}
+
+export type CanvasView = { id: 'edit' } | ({ id: 'play' } & LivePreview)
 
 /**
  * How the editor behaves for a canvas, resolved from what the document is for and the view it
@@ -61,7 +67,7 @@ export interface EditorProfile {
    * The run of layers that hold controls as live components, and of animated shaders; a new
    * revision starts them afresh. Null while layers draw as designed.
    */
-  live: { revision: number } | null
+  live: LivePreview | null
   /** Whether the editor's panels stay beside a canvas shown on its own. */
   panels: boolean
   /** The view leaving this one returns to, as Escape does, or null when there is none. */

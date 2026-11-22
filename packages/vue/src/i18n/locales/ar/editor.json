@@ -14,6 +14,7 @@
   "openChat": "فتح محادثة الذكاء الاصطناعي",
   "closeChat": "إغلاق محادثة الذكاء الاصطناعي",
   "previewing": "جارٍ المعاينة",
+  "showInteractions": "إظهار التفاعلات",
   "startPreview": "معاينة ({shortcut})",
   "resetPreview": "إعادة تعيين",
   "leavePreview": "مغادرة المعاينة ({shortcut})"

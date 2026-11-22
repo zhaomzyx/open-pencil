@@ -32,6 +32,7 @@ const {
   toolShortcuts,
   side = 'bottom',
   align = 'center',
+  inRail = false,
   ui
 } = defineProps<{
   items: ToolbarLayoutItem[]
@@ -44,9 +45,13 @@ const {
   side?: ToolbarSide
   /** Where along its edge the toolbar sits. */
   align?: ToolbarAlign
+  inRail?: boolean
   ui?: ToolbarUI
 }>()
 
+const railDock = tv({
+  base: 'relative flex w-11 min-h-0 shrink-0 flex-col border-e border-border bg-panel'
+})
 const styles = computed(() => tv(toolbarTheme)({ side, align }))
 const popupSide = computed(() => toolbarPopupSide(side))
 
@@ -69,16 +74,17 @@ defineSlots<{
 
 <template>
   <div
-    data-canvas-obstacle
+    :data-canvas-obstacle="inRail ? undefined : ''"
+    :data-tool-rail="inRail ? '' : undefined"
     :data-side="side"
     :data-align="align"
     :data-orientation="toolbarOrientation(side)"
-    :class="styles.dock({ class: ui?.dock })"
+    :class="inRail ? railDock({ class: ui?.dock }) : styles.dock({ class: ui?.dock })"
   >
     <ToolbarRoot
       data-test-id="toolbar"
       :orientation="toolbarOrientation(side)"
-      :class="styles.bar({ class: ui?.bar })"
+      :class="styles.bar({ class: [inRail && 'rounded-none shadow-none', ui?.bar] })"
     >
       <template v-for="item in items" :key="item.kind === 'tool' ? item.tool.key : item.action">
         <slot
@@ -112,6 +118,7 @@ defineSlots<{
             :tool-shortcuts="toolShortcuts"
             :side="side"
             :align="align"
+            :in-rail="inRail"
             :ui="ui"
             @select="emit('setTool', $event)"
           />

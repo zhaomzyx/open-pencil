@@ -51,6 +51,7 @@ export type { PastedTextLink } from './clipboard/web'
 export { pastedPropertyChanges } from './clipboard/paste/properties'
 export { resolvePasteTarget } from './clipboard/paste/target'
 export { playIslandRoots } from './play/islands'
+export type { PrototypePlayer } from './play/prototype'
 export { resolvePlayState, type InstanceState } from './play/states'
 export { EDIT_VIEW, NO_HOST_RESTRICTIONS, resolveEditorProfile } from './views'
 export type {

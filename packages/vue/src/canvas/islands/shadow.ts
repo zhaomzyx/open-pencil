@@ -1,7 +1,29 @@
 import { onMounted, shallowRef, type Ref } from 'vue'
 
 /** Styles of an island's own document; the app's styles do not reach into it. */
-const ISLAND_CSS = ':host{all:initial;display:block}*,*::before,*::after{box-sizing:border-box}'
+const ISLAND_CSS = `
+  :host {
+    all: initial;
+    display: block;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  @media (hover: hover) {
+    [data-prototype-hotspot]:hover:not(:disabled, [aria-disabled="true"], :has([data-prototype-hotspot]:hover)) {
+      cursor: pointer;
+    }
+  }
+
+  :host([data-show-hotspots])
+    :is([data-prototype-hotspot], button, a[href], input, select, textarea):not(:disabled, [aria-disabled="true"]) {
+    /* Show the hint over the inline outline reset on fields. */
+    outline: 2px solid var(--color-accent, #2563eb) !important;
+    outline-offset: -2px;
+  }
+`
 
 /**
  * A container inside a shadow root of `host`, created once `host` mounts, styled only by the

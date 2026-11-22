@@ -14,6 +14,7 @@
   "openChat": "Ouvrir le chat IA",
   "closeChat": "Fermer le chat IA",
   "previewing": "Aperçu",
+  "showInteractions": "Afficher les interactions",
   "resetPreview": "Réinitialiser",
   "leavePreview": "Quitter l’aperçu ({shortcut})",
   "startPreview": "Aperçu ({shortcut})"

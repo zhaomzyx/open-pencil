@@ -5,6 +5,7 @@ import { fileIdentitiesMatch, hasFileIdentity } from '@/app/tabs/open/identity'
 type PendingOpen = {
   completion: Promise<undefined>
   identity: DocumentSourceIdentity
+  recentBrowserFileId?: string
   store: EditorStore
 }
 
@@ -34,6 +35,14 @@ export function createFileOpenCoordinator() {
     return null
   }
 
+  async function findPendingByRecentBrowserFileId(
+    recentBrowserFileId: string
+  ): Promise<PendingOpen | null> {
+    return (
+      pending.find((candidate) => candidate.recentBrowserFileId === recentBrowserFileId) ?? null
+    )
+  }
+
   function add(entry: PendingOpen) {
     pending.push(entry)
   }
@@ -43,5 +52,5 @@ export function createFileOpenCoordinator() {
     if (index !== -1) pending.splice(index, 1)
   }
 
-  return { add, decide, findPending, remove }
+  return { add, decide, findPending, findPendingByRecentBrowserFileId, remove }
 }

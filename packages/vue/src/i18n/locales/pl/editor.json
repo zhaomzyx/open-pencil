@@ -14,6 +14,7 @@
   "openChat": "Otwórz czat AI",
   "closeChat": "Zamknij czat AI",
   "previewing": "Podgląd",
+  "showInteractions": "Pokaż interakcje",
   "resetPreview": "Resetuj",
   "leavePreview": "Zakończ podgląd ({shortcut})",
   "startPreview": "Podgląd ({shortcut})"

@@ -1,6 +1,7 @@
 import { shallowReactive } from 'vue'
 
 import {
+  EDIT_VIEW,
   type EditorState,
   type EditorViewState,
   copyEditorViewState,
@@ -51,7 +52,7 @@ export function cloneCanvasPaneState(id: string, source: CanvasPaneState): Canva
     cursorCanvasX: null,
     cursorCanvasY: null,
     // A new canvas edits; preview belongs to the canvas that started it.
-    play: null,
+    canvasView: EDIT_VIEW,
     viewportWidth: source.viewportWidth,
     viewportHeight: source.viewportHeight
   })

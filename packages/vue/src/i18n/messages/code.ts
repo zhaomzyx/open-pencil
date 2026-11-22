@@ -4,6 +4,7 @@ import { i18n } from '#vue/i18n/create'
 
 export const codeMessageDefaults = {
   source: 'Code source',
+  prototypeInteraction: 'Prototype interaction',
   sourceDesignJSX: 'Design JSX',
   sourceHTML: 'HTML',
   sourceVue: 'Vue',

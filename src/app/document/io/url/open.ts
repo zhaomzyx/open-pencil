@@ -5,6 +5,7 @@ import { errorMessage } from '@open-pencil/std/errors'
 import { filesMessages } from '@open-pencil/vue/i18n'
 
 import { pastePoint } from '@/app/editor/clipboard/paste/content'
+import { openLinkedDesignFile } from '@/app/shell/menu/files'
 import { closeTab, createDocumentTab, openFileInNewTab } from '@/app/tabs'
 import { IS_TAURI } from '@/constants'
 
@@ -102,7 +103,7 @@ export async function openWebAddress(url: URL, signal?: AbortSignal): Promise<vo
     }
     case 'document':
       // Opened as a picked file is: its address is no file path a save could write back to.
-      await openFileInNewTab(new File([remote.bytes], remote.name), { signal })
+      await openLinkedDesignFile(new File([remote.bytes], remote.name), remote.url, { signal })
       return
     case 'svg':
       await openImage(

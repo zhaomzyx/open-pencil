@@ -4,6 +4,7 @@ export {
   forgetRecentFile,
   forgetRecentStorageDocument,
   forgetRecentStorageProfile,
+  identifyRecentBrowserFile,
   recentDocuments,
   recentFiles,
   recentLocalFileAt,
@@ -11,6 +12,8 @@ export {
   recentDocumentIdOf,
   recentDocumentKind,
   recentDocumentView,
+  reserveRecentBrowserFileId,
+  rememberRecentBrowserFile,
   rememberRecentDocumentView,
   rememberRecentFile,
   rememberRecentStorageDocument,
@@ -19,7 +22,7 @@ export {
   type RecentLocalDocument,
   type RecentStorageDocument
 } from './store'
-export { rememberDocumentView, rememberedDocumentView } from './view'
+export { recentDocumentIdOfStore, rememberDocumentView, rememberedDocumentView } from './view'
 export {
   cacheRecentFileCover,
   drawHomeCardCover,

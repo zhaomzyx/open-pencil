@@ -66,6 +66,10 @@ function commentLayer(graph: SceneGraph, node: SceneNode, pageId: string): Scene
 export function commentAnchor(graph: SceneGraph, pageId: string, at: Vector, node?: SceneNode) {
   const target = node ?? graph.hitTest(at.x, at.y, pageId)
   const layer = target ? commentLayer(graph, target, pageId) : null
+  return anchorAt(graph, at, layer)
+}
+
+function anchorAt(graph: SceneGraph, at: Vector, layer: SceneNode | null) {
   const abs = layer ? graph.getAbsolutePosition(layer.id) : null
   return {
     nodeId: layer?.id ?? null,
@@ -93,17 +97,23 @@ export function createCommentThread(
     at: Vector
     /** Pin it on this layer's top-level layer rather than on whatever is at `at`. */
     node?: SceneNode
+    /** The exact source layer picked in a projection. A deleted source leaves a page pin. */
+    sourceNodeId?: string
     author: CommentAuthor
     text: string
     now: string
   }
 ): CommentThread {
-  const { pageId, at, node, author, text, now } = options
+  const { pageId, at, node, author, text, now, sourceNodeId } = options
+  const anchor =
+    sourceNodeId === undefined
+      ? commentAnchor(graph, pageId, at, node)
+      : anchorAt(graph, at, graph.getNode(sourceNodeId) ?? null)
   return {
     id: newCommentId(),
     pageId,
     pageName: graph.getNode(pageId)?.name,
-    ...commentAnchor(graph, pageId, at, node),
+    ...anchor,
     author: author.name,
     authorColor: author.color,
     ...(author.agent ? { agent: author.agent } : {}),

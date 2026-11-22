@@ -136,6 +136,8 @@ export const READ_ONLY_ACTIONS: ReadonlySet<string> = new Set([
 
   // Preview
   'leaveCanvasView',
+  'activatePlaySource',
+  'backPlay',
   'resetPlay',
   'startPlay',
   'stopPlay',

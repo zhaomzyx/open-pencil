@@ -5,7 +5,7 @@ import type { Editor } from '@open-pencil/core'
 
 import { setupSafariGestureZoom } from '#vue/shared/input/gesture'
 import type { DragState } from '#vue/shared/input/types'
-import { setupWheelPanZoom } from '#vue/shared/input/wheel'
+import { setupWheelPanZoom, type WheelNavigationOptions } from '#vue/shared/input/wheel'
 
 export function setupPanZoom(
   canvasRef: Ref<HTMLCanvasElement | null>,
@@ -14,7 +14,8 @@ export function setupPanZoom(
   onMouseDown: (e: MouseEvent) => void,
   onMouseMove: (e: MouseEvent) => void,
   onMouseUp: () => void,
-  zoomSpeed: () => number = () => 1
+  zoomSpeed: () => number = () => 1,
+  wheelOptions?: WheelNavigationOptions
 ) {
   let activeTouches: Touch[] = []
   let pinchStartDist = 0
@@ -144,7 +145,7 @@ export function setupPanZoom(
     }
   }
 
-  setupWheelPanZoom(canvasRef, editor, zoomSpeed)
+  setupWheelPanZoom(canvasRef, editor, zoomSpeed, wheelOptions)
   useEventListener(canvasRef, 'touchstart', onTouchStart, { passive: false })
   useEventListener(canvasRef, 'touchmove', onTouchMove, { passive: false })
   useEventListener(canvasRef, 'touchend', onTouchEnd, { passive: false })

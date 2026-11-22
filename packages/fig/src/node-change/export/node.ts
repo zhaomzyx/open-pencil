@@ -41,6 +41,7 @@ import {
   mergePluginData,
   serializePluginRelaunchData
 } from '../plugin-data'
+import { serializePrototype } from '../prototype'
 import { serializeNodeStatus } from '../status'
 import {
   componentPropAssignment,
@@ -1102,6 +1103,13 @@ export function sceneNodeToKiwiWithContext(
   context.serializeVariableBindings(node, nc, context.graph, context.varIdToGuid)
   mergeParameterBindings(nc)
   applyRawFigmaNodeFields(context, node, nc)
+  serializePrototype(
+    node,
+    nc,
+    (id) => getOrCreateNodeGuid(context, id, localIdCounter),
+    (id) => context.varIdToGuid?.get(id),
+    () => ({ sessionID: 1, localID: localIdCounter.value++ })
+  )
   applyVariableModes(context, node, nc)
 
   applyExportSettingsPluginData(node)

@@ -8,7 +8,7 @@ import { chooseBrowserFigSaveHandle, chooseTauriFigSavePath } from '@/app/docume
 import type { NamedDocumentState } from '@/app/document/io/state'
 import type { DocumentSourceAccess } from '@/app/document/io/types'
 import { createDocumentWriter } from '@/app/document/io/write'
-import { rememberRecentFile } from '@/app/recent-files'
+import { rememberRecentBrowserFile, rememberRecentFile } from '@/app/recent-files'
 import { IS_TAURI } from '@/constants'
 
 type SaveActionsOptions = Omit<DocumentSourceAccess, 'getSavedVersion'> & {
@@ -32,6 +32,8 @@ export function createSaveActions({
   setFileHandle,
   getDownloadName,
   setDownloadName,
+  getRecentBrowserFileId,
+  setRecentBrowserFileId,
   getStorageBinding,
   setStorageBinding,
   hasWritableSource,
@@ -58,6 +60,15 @@ export function createSaveActions({
     return { stream: await buildFigStream(), version }
   }
 
+  async function rememberBrowserFile(
+    source: File | FileSystemFileHandle,
+    browserFileId?: string
+  ): Promise<string> {
+    const rememberedId = await rememberRecentBrowserFile(source, state.documentKind, browserFileId)
+    setRecentBrowserFileId?.(rememberedId)
+    return rememberedId
+  }
+
   /** Runs a save the person waits for, showing its progress once it takes a while. */
   async function withProgress<T>(save: (progress: SaveProgress) => Promise<T>): Promise<T> {
     const progress = startSaveProgress()
@@ -78,13 +89,23 @@ export function createSaveActions({
         const { stream, version } = await buildVersionedFigStream()
         const wrote = await writeFile(progress.track(stream), version)
         if (wrote && !storageBinding) setSourceIdentity({ handle: fileHandle, path: filePath })
+        if (wrote && !storageBinding && fileHandle) {
+          await rememberBrowserFile(fileHandle, getRecentBrowserFileId?.() ?? undefined)
+        }
         return wrote
       })
     }
     if (downloadName) {
       return withProgress(async (progress) => {
         const { stream, version } = await buildVersionedFigStream()
-        await download(downloadName, progress.track(stream))
+        const blob = await download(downloadName, progress.track(stream))
+        await rememberBrowserFile(
+          new File([blob], downloadName, {
+            type: blob.type || 'application/octet-stream',
+            lastModified: Date.now()
+          }),
+          getRecentBrowserFileId?.() ?? undefined
+        )
         await onDownloadSuccess?.(version)
         return true
       })
@@ -125,7 +146,10 @@ export function createSaveActions({
           const { stream, version } = await buildVersionedFigStream()
           return writeFile(progress.track(stream), version)
         })
-        if (wrote) setSourceIdentity({ handle, path: null })
+        if (wrote) {
+          setSourceIdentity({ handle, path: null })
+          await rememberBrowserFile(handle)
+        }
         startWatchingFile()
         return wrote
       } catch (error) {
@@ -135,7 +159,7 @@ export function createSaveActions({
         // part of the stream, so the download writes the document again.
         setFileHandle(null)
         setSourceIdentity({ handle: null, path: null })
-        return downloadBuilt(handle.name)
+        return downloadBuilt(handle.name, null)
       }
     }
 
@@ -144,22 +168,34 @@ export function createSaveActions({
       getDownloadName() ?? documentFileName('Untitled', state.documentKind)
     )
     if (!filename) return false
-    return downloadBuilt(filename)
+    return downloadBuilt(filename, null)
   }
 
   async function download(filename: string, stream: ReadableStream<Uint8Array>) {
-    downloadBlob(await new Response(stream).blob(), filename, 'application/octet-stream')
+    const blob = await new Response(stream).blob()
+    downloadBlob(blob, filename, 'application/octet-stream')
+    return blob
   }
 
   /** A download builds its stream only once the person has chosen the name. */
-  async function downloadBuilt(filename: string): Promise<boolean> {
+  async function downloadBuilt(
+    filename: string,
+    browserFileId: string | null = getRecentBrowserFileId?.() ?? null
+  ): Promise<boolean> {
     setStorageBinding(null)
     setDownloadName(filename)
     // Named first, as the other targets are, so the archive's meta.json records the new name.
     state.documentName = documentNameFromFigPath(filename)
     return withProgress(async (progress) => {
       const { stream, version } = await buildVersionedFigStream()
-      await download(filename, progress.track(stream))
+      const blob = await download(filename, progress.track(stream))
+      await rememberBrowserFile(
+        new File([blob], filename, {
+          type: blob.type || 'application/octet-stream',
+          lastModified: Date.now()
+        }),
+        browserFileId ?? undefined
+      )
       await onDownloadSuccess?.(version)
       return true
     })

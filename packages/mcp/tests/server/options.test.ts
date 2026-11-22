@@ -15,6 +15,7 @@ import {
 } from '@open-pencil/core/constants'
 import { SceneGraph } from '@open-pencil/scene-graph'
 import { MAX_LAYOUT_SPACING } from '@open-pencil/scene-graph/layout'
+import { prototypePatch } from '@open-pencil/scene-graph/prototype'
 import { expectDefined } from '@open-pencil/test-support/assert'
 
 import { startServer, type ServerHandle } from '#mcp/server'
@@ -329,6 +330,19 @@ describe('MCP server', () => {
     })
     expect(update.isError).toBe(true)
     expect(graph.getNode(id)?.y).toBe(0)
+  })
+
+  test('get_prototype exposes the original click sequence over MCP', async () => {
+    const [page] = graph.getPages()
+    const node = graph.createNode('FRAME', page.id, { name: 'Confirm' })
+    graph.updateNode(node.id, prototypePatch(node, { actions: [{ type: 'closeOverlay' }] }))
+    const result = await client.callTool({ name: 'get_prototype', arguments: { id: node.id } })
+    expect(result.isError).not.toBe(true)
+    expect(parseResult(result)).toMatchObject({
+      source: { id: node.id, name: 'Confirm', pageId: page.id },
+      trigger: 'click',
+      actions: [{ type: 'closeOverlay' }]
+    })
   })
 
   test('get_page_tree returns page structure', async () => {

@@ -23,6 +23,40 @@ test('shapes flyout opens', async () => {
   editor.canvas.assertNoErrors()
 })
 
+test('desktop toolbar long press opens the tool flyout', async () => {
+  await editor.canvas.pressKey('h')
+  const handButton = editor.page.getByTestId(toolbarToolTestId('HAND'))
+  const rectangleButton = editor.page.getByTestId(toolbarToolTestId('RECTANGLE'))
+  const rectangleFlyout = editor.page.getByTestId(toolbarFlyoutTestId('RECTANGLE'))
+  await expect(handButton).toHaveAttribute('aria-pressed', 'true')
+
+  await rectangleButton.hover()
+  await editor.page.mouse.down()
+  await expect(rectangleFlyout).toHaveAttribute('data-state', 'open')
+  await editor.page.mouse.up()
+
+  await expect(rectangleFlyout).toHaveAttribute('data-state', 'open')
+  await expect(handButton).toHaveAttribute('aria-pressed', 'true')
+
+  await editor.page.getByTestId(toolbarFlyoutItemTestId('POLYGON')).click()
+  await expect(editor.page.getByTestId(toolbarToolTestId('POLYGON'))).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+
+  await editor.canvas.pressKey('h')
+  const polygonButton = editor.page.getByTestId(toolbarToolTestId('POLYGON'))
+  await polygonButton.focus()
+  await polygonButton.press('Enter')
+  await expect(polygonButton).toHaveAttribute('aria-pressed', 'true')
+
+  await editor.canvas.pressKey('h')
+  await polygonButton.click()
+  await expect(polygonButton).toHaveAttribute('aria-pressed', 'true')
+  await expect(rectangleFlyout).toHaveAttribute('data-state', 'closed')
+  editor.canvas.assertNoErrors()
+})
+
 test('Polygon tool creates POLYGON node', async () => {
   await editor.page.getByTestId(toolbarFlyoutItemTestId('POLYGON')).click()
   await expect(editor.page.getByTestId(toolbarToolTestId('POLYGON'))).toHaveAttribute(

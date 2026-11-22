@@ -4,6 +4,7 @@ import { createYjsGraphSync, registerYjsObservers, type CollabEditor } from '#co
 import * as Y from 'yjs'
 
 import { SceneGraph } from '@open-pencil/scene-graph'
+import { prototypePatch, readPrototype } from '@open-pencil/scene-graph/prototype'
 
 /** An editor with nothing to redraw and no edits of its own, as a server reading a room has. */
 function headlessEditor(graph: SceneGraph): CollabEditor {
@@ -32,7 +33,15 @@ describe('room document to graph', () => {
     const source = new SceneGraph()
     const page = source.addPage('Cover')
     const frame = source.createNode('FRAME', page.id, { name: 'Hero', width: 320, height: 200 })
-    source.createNode('RECTANGLE', frame.id, { name: 'Badge', x: 12, y: 8 })
+    const badge = source.createNode('RECTANGLE', frame.id, { name: 'Badge', x: 12, y: 8 })
+    const details = source.createNode('FRAME', page.id, { name: 'Details' })
+    source.updateNode(frame.id, prototypePatch(frame, { start: true }))
+    source.updateNode(
+      badge.id,
+      prototypePatch(badge, {
+        actions: [{ type: 'navigate', targetId: details.id }]
+      })
+    )
     const room = new Y.Doc()
     graphSync(room, headlessEditor(source)).syncAllNodesToYjs()
 
@@ -56,6 +65,12 @@ describe('room document to graph', () => {
     expect(cover?.id).toBe(page.id)
     const hero = graph.getNode(frame.id)
     expect(hero).toMatchObject({ name: 'Hero', width: 320, height: 200, parentId: page.id })
-    expect(graph.getChildren(frame.id).map((child) => child.name)).toEqual(['Badge'])
+    const [remoteBadge] = graph.getChildren(frame.id)
+    expect(remoteBadge?.name).toBe('Badge')
+    expect(hero && readPrototype(hero).start).toBe(true)
+    expect(graph.getNode(details.id)).toBeDefined()
+    expect(remoteBadge && readPrototype(remoteBadge).actions).toEqual([
+      { type: 'navigate', targetId: details.id }
+    ])
   })
 })

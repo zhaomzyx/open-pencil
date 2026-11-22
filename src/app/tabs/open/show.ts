@@ -33,6 +33,7 @@ export function reusableTabStore(): OpeningTab {
   const source = current?.store.getSourceIdentity()
   const isUntouched =
     current?.kind === 'document' &&
+    !current.store.state.preparation &&
     current.store.state.documentName === 'Untitled' &&
     !current.store.undo.canUndo &&
     !current.store.hasUnsavedChanges() &&

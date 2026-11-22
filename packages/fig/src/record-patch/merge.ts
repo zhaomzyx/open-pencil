@@ -152,6 +152,7 @@ export function mergeRecords<Value>(
     if (entry.id) written.set(entry.id, entry)
   }
   const removed = writeFieldPatches(archive, patch, written, decode)
+  clearLegacyStarts(archive, patch.fields, removed, written, decode)
   const archiveIds = new Set(archive.flatMap((entry) => entry.id ?? []))
   const archivePositions = new Map<string, NodeChange['parentIndex']>()
   const writer = createRecordWriter<Value | NodeChange>(written, archiveIds)
@@ -180,4 +181,31 @@ export function patchFigRecords(
   patch: Pick<FigRecordPatch, 'records' | 'fields' | 'removed' | 'replaceVariables'>
 ): NodeChange[] {
   return mergeRecords(archive.map(entryOf), patch, (record) => record).map((entry) => entry.value)
+}
+
+function clearLegacyStarts<Value>(
+  archive: ReadonlyArray<RecordEntry<Value>>,
+  fields: FigRecordPatch['fields'],
+  removed: ReadonlySet<string>,
+  written: Map<string, RecordEntry<NodeChange>>,
+  decode: (value: Value) => NodeChange
+): void {
+  // Legacy files store a flow start on its canvas. Removing the frame's modeled start
+  // must also clear that older pointer or reopening the archive restores it.
+  const clearedStarts = new Set(
+    (fields ?? [])
+      .filter((field) => field.unset.includes('prototypeStartingPoint'))
+      .map((field) => guidToString(field.guid))
+  )
+  if (clearedStarts.size || removed.size) {
+    for (const entry of archive) {
+      if (!entry.id || entry.type !== 'CANVAS' || removed.has(entry.id)) continue
+      const page = written.get(entry.id)?.value ?? decode(entry.value)
+      const start = page.prototypeStartNodeID && guidToString(page.prototypeStartNodeID)
+      if (!start || (!clearedStarts.has(start) && !removed.has(start))) continue
+      const updated = { ...page }
+      delete updated.prototypeStartNodeID
+      written.set(entry.id, entryOf(updated))
+    }
+  }
 }

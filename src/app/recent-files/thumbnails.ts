@@ -9,6 +9,7 @@ import { figThumbnailPageId } from '@open-pencil/core/io/formats/fig'
 import { renderThumbnail } from '@open-pencil/core/io/formats/raster'
 import { extractFigThumbnailFromReader } from '@open-pencil/fig'
 import type { SceneGraph } from '@open-pencil/scene-graph'
+import { imageHeader } from '@open-pencil/scene-graph/images'
 
 import {
   readCacheBytes,
@@ -20,9 +21,17 @@ import {
 import { isFigArchiveName } from '@/app/document/io/names'
 import { isTauri } from '@/app/tauri/env'
 
+import {
+  deleteRecentBrowserThumbnail as deleteStoredRecentBrowserThumbnail,
+  readRecentBrowserThumbnail as readStoredRecentBrowserThumbnail,
+  writeRecentBrowserThumbnail as writeStoredRecentBrowserThumbnail,
+  type RecentBrowserFileSource
+} from './browser-handles'
+
 // One entry per file: its cover and the size and time of the file it was drawn for. v4 holds
 // 800×450 covers; older ones are drawn again when a file next opens.
 const RECENT_FILE_THUMBNAIL_CACHE_DIR = 'recent-file-thumbnails/v4'
+const MAX_RECENT_BROWSER_THUMBNAIL_BYTES = 16 * 1024 * 1024
 
 const coverFingerprintSchema = v.strictObject({ size: v.number(), mtime: v.number() })
 type CoverFingerprint = v.InferOutput<typeof coverFingerprintSchema>
@@ -152,4 +161,74 @@ export async function loadRecentFileThumbnail(path: string): Promise<Uint8Array 
   } finally {
     await file.close()
   }
+}
+
+export type RecentBrowserCover = () => Uint8Array | null | Promise<Uint8Array | null>
+
+function usableBrowserThumbnail(bytes: Uint8Array | null): bytes is Uint8Array {
+  if (!bytes || bytes.byteLength === 0 || bytes.byteLength > MAX_RECENT_BROWSER_THUMBNAIL_BYTES) {
+    return false
+  }
+  const header = imageHeader(bytes)
+  // Figma's 1×1 placeholder is a valid PNG, but means the file has no embedded cover.
+  return header?.type === 'image/png' && header.width > 1 && header.height > 1
+}
+
+async function extractBrowserArchiveThumbnail(
+  source: RecentBrowserFileSource
+): Promise<Uint8Array | null> {
+  if (!isFigArchiveName(source.name)) return null
+  let file: Blob
+  try {
+    file = source instanceof Blob ? source : await source.getFile()
+  } catch {
+    return null
+  }
+  return extractFigThumbnailFromReader({
+    size: file.size,
+    async read(start, endExclusive) {
+      return new Uint8Array(await file.slice(start, endExclusive).arrayBuffer())
+    }
+  })
+}
+
+async function loadCachedRecentBrowserThumbnail(id: string): Promise<Uint8Array | null> {
+  const bytes = await readStoredRecentBrowserThumbnail(id).catch(() => null)
+  return usableBrowserThumbnail(bytes) ? bytes : null
+}
+
+/**
+ * Updates a browser Recent document's cover after its source is durably written. Embedded
+ * archive thumbnails win; the editor-rendered fallback runs only when none is available.
+ */
+export async function updateRecentBrowserThumbnail(
+  id: string,
+  source: RecentBrowserFileSource,
+  cachedFile?: File,
+  fallbackCover?: RecentBrowserCover
+): Promise<void> {
+  const embedded = await extractBrowserArchiveThumbnail(cachedFile ?? source).catch(() => null)
+  let cover = usableBrowserThumbnail(embedded) ? embedded : null
+  if (!usableBrowserThumbnail(cover) && fallbackCover) cover = await fallbackCover()
+  if (usableBrowserThumbnail(cover)) {
+    await writeStoredRecentBrowserThumbnail(id, cover)
+    return
+  }
+  await deleteStoredRecentBrowserThumbnail(id)
+}
+
+/**
+ * A Home card's browser cover. The archive's own thumbnail is read in bounded segments first,
+ * then the editor-rendered cover is used for documents whose archive has no embedded image.
+ * This read path never grants handle permission and never writes to the cache.
+ */
+export async function loadRecentBrowserThumbnail(
+  id: string,
+  source?: RecentBrowserFileSource
+): Promise<Uint8Array | null> {
+  if (source) {
+    const embedded = await extractBrowserArchiveThumbnail(source).catch(() => null)
+    if (usableBrowserThumbnail(embedded)) return embedded
+  }
+  return loadCachedRecentBrowserThumbnail(id)
 }

@@ -76,6 +76,8 @@ export function createDocumentIOActions(
     fitCurrentPageToViewport,
     getDocumentFilePath: sourceState.getFilePath,
     getDocumentFileHandle: sourceState.getFileHandle,
+    getRecentBrowserFileId: sourceState.getRecentBrowserFileId,
+    setRecentBrowserFileId: sourceState.setRecentBrowserFileId,
     getSourceIdentity: sourceState.getSourceIdentity,
     getStorageBinding: sourceState.getStorageBinding,
     hasWritableSource: sourceState.hasWritableSource,

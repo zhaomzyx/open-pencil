@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useElementSize, useScroll } from '@vueuse/core'
+import { useScroll } from '@vueuse/core'
 import { TreeItem, TreeVirtualizer, ContextMenuPortal } from 'reka-ui'
 import { tv } from 'tailwind-variants'
 import { computed, nextTick, useAttrs, useTemplateRef, watch } from 'vue'
@@ -31,7 +31,7 @@ import LayerTreeStickyRow from './LayerTreeStickyRow.vue'
 import { layerModeNames } from './mode-names'
 import { provideLayerTreeUI } from './ui'
 import type { LayerTreeUI } from './ui'
-import { createTextMeasure, rowsOverflow } from './width'
+import { createTextMeasure, minimumRowsWidth } from './width'
 
 interface LayerTreeRootActions {
   select: (id: string, selection: boolean | LayerSelectionMode) => void
@@ -61,7 +61,6 @@ const store = useEditorStore()
 const viewport = useTemplateRef<HTMLElement>('viewport')
 /** How far the rows are scrolled, for the pinned top-level row. */
 const { y: scrollTop } = useScroll(viewport)
-const { width: viewportWidth } = useElementSize(viewport)
 const measureText = createTextMeasure()
 const root = useTemplateRef<InstanceType<typeof LayerTreeRoot>>('root')
 let pendingScrollPosition: number | undefined
@@ -181,17 +180,15 @@ function chrome(scope: Omit<LayerTreeSlotScope, 'actions'>) {
 }
 
 /**
- * The rows' width, wider than the list for the widest row's whole name. It goes on the
- * virtualizer's own element, over its `width: 100%`; its rows fill it, and a wider block runs
- * past the list's end in either reading direction, so the list scrolls sideways. The rows are
- * reactive, so a rename or a new mode badge widens it, while other renders reuse it.
+ * Let CSS compare the widest row with the viewport. Measuring the viewport in a ResizeObserver
+ * and using that measurement to set the scroll content's width changes the observed box again.
  */
 const rowsWidth = computed(() => {
   const el = viewport.value
   // The list sets the rows' text size, so its font is the names' font.
   const style = el ? getComputedStyle(el) : null
   const marks = issueMarks.value
-  const overflow = rowsOverflow(
+  const minimumWidth = minimumRowsWidth(
     root.value?.visibleRows ?? [],
     {
       font: style?.font ?? '',
@@ -200,8 +197,7 @@ const rowsWidth = computed(() => {
       nameStart: nameStart.value,
       buttons: buttons.value,
       badge: badge.value,
-      issueMark: issueMark.value,
-      viewportWidth: viewportWidth.value
+      issueMark: issueMark.value
     },
     {
       modeNames: (row) => layerModeNames(store.graph, row.node.modeIds),
@@ -209,7 +205,7 @@ const rowsWidth = computed(() => {
     },
     measureText
   )
-  return `calc(100% + ${overflow}px)`
+  return `max(100%, ${minimumWidth}px)`
 })
 
 /**

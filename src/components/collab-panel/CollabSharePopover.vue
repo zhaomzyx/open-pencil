@@ -7,12 +7,15 @@ import CampaignNoteHost from '@/components/campaigns/CampaignNoteHost.vue'
 import ConnectedRoom from '@/components/collab-panel/ConnectedRoom.vue'
 import { useCollabPanelContext } from '@/components/collab-panel/context'
 import ShareOrJoinRoom from '@/components/collab-panel/ShareOrJoinRoom.vue'
+import IconButton from '@/components/ui/button/IconButton.vue'
+import { useInlineSide } from '@/components/ui/direction/inline-side'
 import AppPopoverRoot from '@/components/ui/overlay/AppPopoverRoot.vue'
 import { usePopoverUI } from '@/components/ui/overlay/popover'
 
 import { shareButton } from './ui'
 
 const collab = useCollabPanelContext()
+const canvasSide = useInlineSide('start')
 const cls = usePopoverUI({ content: 'z-50 w-72 p-3' })
 const connection = computed(() => {
   const status = collab.state.status
@@ -24,14 +27,17 @@ const connection = computed(() => {
 <template>
   <AppPopoverRoot v-model:open="collab.popoverOpen">
     <PopoverTrigger as-child>
-      <button
+      <IconButton
+        :label="collab.messages.share"
+        :side="canvasSide"
         data-test-id="collab-share-button"
         :data-connection="connection"
+        data-icon-only
+        size="md"
         :class="shareButton({ connection })"
       >
-        <icon-lucide-share-2 class="size-3.5" />
-        {{ collab.messages.share }}
-      </button>
+        <icon-lucide-share-2 aria-hidden="true" />
+      </IconButton>
     </PopoverTrigger>
 
     <PopoverPortal>
@@ -39,8 +45,8 @@ const connection = computed(() => {
         data-test-id="collab-popover"
         :class="cls.content"
         :side-offset="8"
-        side="bottom"
-        align="end"
+        :side="canvasSide"
+        align="start"
         @open-auto-focus.prevent
       >
         <ConnectedRoom v-if="collab.state.inRoom" />

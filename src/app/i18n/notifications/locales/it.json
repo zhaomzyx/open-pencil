@@ -19,6 +19,7 @@
   "vectorizeCredentialFailed": "{error}. Aggiornala in Impostazioni → Servizi per immagini.",
   "vectorizeFailed": "{provider} non ha potuto vettorializzare questa immagine: {error}",
   "operationFailed": "Operazione non riuscita: {error}",
+  "pageKeptForUnsavedChanges": "La pagina rimane aperta. Salva le modifiche in {names} prima di ricaricare o uscire.",
   "storageConnected": "Connessione riuscita. Lo spazio di archiviazione è pronto.",
   "storageConnectionFailed": "Impossibile connettersi all’archiviazione: {error}",
   "nodeID": "ID nodo",

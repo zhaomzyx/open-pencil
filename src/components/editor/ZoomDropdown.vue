@@ -25,7 +25,15 @@ import { menuItem, useMenuUI } from '@/components/ui/menu/menu'
 import MenuScrollArea from '@/components/ui/menu/MenuScrollArea.vue'
 
 /** A split view's header passes its pane, which opening the menu makes active, by pointer or key. */
-const { paneId } = defineProps<{ paneId?: string }>()
+const {
+  paneId,
+  side = 'bottom',
+  align = 'end'
+} = defineProps<{
+  paneId?: string
+  side?: 'top' | 'bottom'
+  align?: 'start' | 'end'
+}>()
 
 const store = useEditorStore()
 const { getCommand } = useEditorCommands()
@@ -44,7 +52,7 @@ const zoom = computed(
 )
 
 function zoomPercent() {
-  return Math.round(zoom.value * 100)
+  return Number((zoom.value * 100).toFixed(1))
 }
 
 function startEditing() {
@@ -54,8 +62,8 @@ function startEditing() {
 }
 
 function commitInput() {
-  const parsed = Number.parseInt(inputValue.value, 10)
-  if (!Number.isNaN(parsed) && parsed > 0) {
+  const parsed = Number.parseFloat(inputValue.value)
+  if (Number.isFinite(parsed) && parsed > 0) {
     store.zoomToLevel(parsed / 100)
   }
   editing.value = false
@@ -116,7 +124,7 @@ watch(open, (v) => {
       <button
         data-test-id="zoom-dropdown-trigger"
         class="cursor-pointer rounded px-1.5 py-0.5 text-2xs text-muted tabular-nums hover:bg-hover"
-        :class="paneId ? 'shrink-0' : 'ms-auto'"
+        :class="paneId || align === 'start' ? 'shrink-0' : 'ms-auto'"
       >
         {{ zoomPercent() }}%
       </button>
@@ -124,9 +132,9 @@ watch(open, (v) => {
 
     <DropdownMenuPortal>
       <DropdownMenuContent
-        side="bottom"
+        :side="side"
         :side-offset="4"
-        align="end"
+        :align="align"
         :class="menuCls.content"
         @escape-key-down="cancelInput"
       >
@@ -136,6 +144,7 @@ watch(open, (v) => {
               v-if="editing"
               ref="inputRef"
               v-model="inputValue"
+              inputmode="decimal"
               data-test-id="zoom-input"
               class="w-full rounded border border-accent bg-input px-2 py-1 text-xs text-surface outline-none"
               @blur="commitInput"

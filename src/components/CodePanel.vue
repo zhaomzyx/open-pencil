@@ -38,6 +38,7 @@ import {
 import { codeStyling } from '@/app/code/styling'
 import { starterSourceFor, type CodeSource } from '@/app/code/templates'
 import { useEditorStore } from '@/app/editor/active-store'
+import PrototypeSummary from '@/components/code-editor/PrototypeSummary.vue'
 import AppButton from '@/components/ui/button/AppButton.vue'
 import AppCopyButton from '@/components/ui/button/AppCopyButton.vue'
 import AppPlaceholder from '@/components/ui/feedback/AppPlaceholder.vue'
@@ -424,6 +425,7 @@ watch(
       </AppCopyButton>
     </header>
 
+    <PrototypeSummary v-if="active" />
     <AppPlaceholder
       v-if="showEmptyState"
       :label="code.noSelection"

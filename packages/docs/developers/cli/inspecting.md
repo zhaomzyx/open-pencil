@@ -175,6 +175,14 @@ openpencil eval --document-id tab-123 --page-id 0:1 -c "..."
 
 Use `openpencil documents list --json` in agent workflows, then pass `--document-id` and `--page-id` explicitly instead of relying on the visible active tab/page. To open, save, switch, and close documents, undo, change settings, or call any editor tool, see [Controlling the App](/developers/cli/app-control).
 
+## Inspect a prototype interaction
+
+Select a layer in the editor and open the **Code** tab to see its prototype interaction. The `get_prototype` MCP tool and CLI return the same JSON. The `actions` array follows execution order, including actions nested under `ifNumber`. The `targets` and `variables` arrays give the referenced IDs and names. Check `valid` before using a reference.
+
+```sh
+openpencil tool call get_prototype design.fig --args '{"id":"0:5"}' --json
+```
+
 ## Lint Designs
 
 Check documents for naming, layout, structure, and accessibility issues:

@@ -14,6 +14,7 @@ import { useI18n } from '@open-pencil/vue/i18n'
 
 import { useEditorStore } from '@/app/editor/active-store'
 import type { SplitDirection } from '@/app/editor/panes/split-tree'
+import { usePlayHotspotHints } from '@/app/editor/play-hotspot-hints'
 import { appMenuShortcut } from '@/app/shell/menu/shortcut'
 import ZoomDropdown from '@/components/editor/ZoomDropdown.vue'
 import IconButton from '@/components/ui/button/IconButton.vue'
@@ -27,12 +28,15 @@ const { paneId } = defineProps<{
 }>()
 
 const store = useEditorStore()
+const playHotspotHints = usePlayHotspotHints()
 const { menu: menuText, editor } = useI18n()
 const view = computed(() => store.getPaneView(paneId))
 const isActive = computed(() => store.activePaneId.value === paneId)
 // Split view keeps the panels, so the canvas-only preview pill never shows; the header says it.
-const previewing = computed(
-  () => resolveEditorProfile(store.getPaneRenderState(paneId)).live !== null
+const live = computed(() => resolveEditorProfile(store.getPaneRenderState(paneId)).live)
+const previewing = computed(() => live.value !== null)
+const canGoBack = computed(
+  () => !!(live.value?.player?.history.length || live.value?.player?.overlays.length)
 )
 const leaveShortcut = formatShortcut(appMenuShortcut('toggle-preview')) ?? ''
 const pageName = computed(() => {
@@ -62,6 +66,7 @@ function split(direction: SplitDirection) {
     :data-active="isActive ? 'true' : 'false'"
     :class="headerCls.root()"
     @pointerdown="activatePane"
+    @focusin="activatePane"
   >
     <span :class="headerCls.title()">{{ pageName }}</span>
     <template v-if="previewing">
@@ -69,6 +74,23 @@ function split(direction: SplitDirection) {
         <icon-lucide-play class="size-3" />
         <span :class="headerCls.badgeLabel()">{{ editor.previewing }}</span>
       </span>
+      <IconButton
+        :label="editor.showInteractions"
+        data-test-id="pane-show-interactions"
+        size="xs"
+        @click="playHotspotHints.request(paneId)"
+      >
+        <icon-lucide-mouse-pointer-click :class="headerCls.icon()" />
+      </IconButton>
+      <IconButton
+        v-if="canGoBack"
+        :label="menuText.back"
+        size="xs"
+        data-property="preview-back"
+        @click="store.backPlay()"
+      >
+        <icon-lucide-arrow-left data-direction="reading" :class="headerCls.icon()" />
+      </IconButton>
       <IconButton :label="editor.resetPreview" size="xs" @click="store.resetPlay()">
         <icon-lucide-rotate-ccw :class="headerCls.icon()" />
       </IconButton>

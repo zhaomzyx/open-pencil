@@ -44,6 +44,7 @@ import {
   getCurrentPage,
   getFontStatus,
   getPageTree,
+  getPrototype,
   insertLibraryComponent,
   listAvailableFonts,
   listLibraries,
@@ -99,6 +100,7 @@ import {
 export const EXTENDED_TOOLS: ToolDef[] = [
   // Read (advanced)
   getPageTree,
+  getPrototype,
   getCurrentPage,
   listPages,
   selectNodes,

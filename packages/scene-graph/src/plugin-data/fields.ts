@@ -8,6 +8,7 @@ import { clampExportScale } from '../export-scale'
 import { FIG_COMPRESSIONS } from '../fig-compression'
 import { iconSchema, iconTintSchema } from '../icons/schema'
 import type { Rect } from '../primitives'
+import { prototypeSpecSchema } from '../prototype/schema'
 import { shaderPaintSchema } from '../shaders/schema'
 import { nodeStatusSchema, statusWorkflowSchema } from '../statuses/schema'
 import {
@@ -220,6 +221,7 @@ export const OPEN_PENCIL_PLUGIN_DATA = {
   libraryModes: jsonPluginDataField('libraryModes', 'format', v.record(v.string(), v.string())),
   /** One entry per paint picked in OkHCL, so the picker reopens on the same coordinates. */
   okhcl: jsonPluginDataField('okhcl', 'content', okhclSchema),
+  prototype: jsonPluginDataField('prototype', 'content', prototypeSpecSchema),
   /** How a main component or component set behaves as a control in preview. */
   behaviour: jsonPluginDataField('behaviour', 'content', behaviourSchema),
   /** The icon a frame draws, such as `lucide:home`, on the frame its paths are in. */

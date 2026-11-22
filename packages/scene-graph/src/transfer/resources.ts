@@ -1,5 +1,6 @@
 import { isEqual } from 'es-toolkit'
 
+import { remappedPrototype } from '../prototype/references'
 import { STYLE_LINK_FIELDS } from '../shared-styles'
 import { remapStyleRunReferences } from '../text/references'
 import type { SceneNode } from '../types'
@@ -7,6 +8,8 @@ import type { SceneNode } from '../types'
 /** How a layer's references to variables, collections, modes, and styles are renamed. */
 export interface ResourceReferences {
   variable: (id: string) => string
+  /** Prototype actions may refer to a deleted variable that the document no longer owns. */
+  prototypeVariable?: (id: string) => string
   collection: (id: string) => string
   mode: (id: string) => string
   style: (id: string) => string
@@ -26,6 +29,7 @@ export function remappedResourceReferences(
 ): Partial<SceneNode> {
   const { variable, collection, mode, style, layer } = references
   const remapped: Partial<SceneNode> = {
+    ...remappedPrototype(node, layer ?? ((id) => id), references.prototypeVariable ?? variable),
     boundVariables: Object.fromEntries(
       Object.entries(node.boundVariables).map(([field, id]) => [field, variable(id)])
     ),

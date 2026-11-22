@@ -39,19 +39,16 @@ test.describe('Zoom and pan', () => {
     await helper.page.close()
   })
 
-  test('wheel zoom updates viewport correctly', async () => {
+  test('vertical wheel zooms without a modifier', async () => {
     const before = await helper.page.evaluate(() => {
       const store = window.openPencil?.getStore?.()
       if (!store) throw new Error('OpenPencil store not initialized')
       return { panX: store.state.panX, panY: store.state.panY, zoom: store.state.zoom }
     })
 
-    // Use Playwright's native mouse.wheel with Control key held for zoom
     const box = expectDefined(await helper.canvas.boundingBox(), 'canvas bounds')
     await helper.page.mouse.move(box.x + 400, box.y + 300)
-    await helper.page.keyboard.down('Control')
     await helper.page.mouse.wheel(0, -100)
-    await helper.page.keyboard.up('Control')
     await helper.waitForRender()
     await helper.page.waitForTimeout(50)
 
@@ -61,11 +58,11 @@ test.describe('Zoom and pan', () => {
       return { panX: store.state.panX, panY: store.state.panY, zoom: store.state.zoom }
     })
 
-    expect(after.zoom).not.toBe(before.zoom)
+    expect(after.zoom).toBeGreaterThan(before.zoom)
     helper.assertNoErrors()
   })
 
-  test('wheel pan updates viewport correctly', async () => {
+  test('a horizontal wheel gesture pans the viewport', async () => {
     const before = await helper.page.evaluate(() => {
       const store = window.openPencil?.getStore?.()
       if (!store) throw new Error('OpenPencil store not initialized')
@@ -75,7 +72,6 @@ test.describe('Zoom and pan', () => {
     const box = expectDefined(await helper.canvas.boundingBox(), 'canvas bounds')
     await helper.page.mouse.move(box.x + 400, box.y + 300)
 
-    // Playwright wheel without ctrl → pan
     await helper.page.mouse.wheel(100, 50)
     await helper.waitForRender()
     await helper.page.waitForTimeout(50)

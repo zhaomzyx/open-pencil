@@ -1,3 +1,5 @@
+import { sha256 } from '@noble/hashes/sha2.js'
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js'
 import { open } from '@tauri-apps/plugin-dialog'
 import { readFile } from '@tauri-apps/plugin-fs'
 import { useFileDialog } from '@vueuse/core'
@@ -5,7 +7,7 @@ import { uniq } from 'es-toolkit/array'
 import { basename } from 'pathe'
 import { decode } from 'ufo'
 
-import { BUILTIN_IO_FORMATS, IORegistry } from '@open-pencil/core/io'
+import { BUILTIN_IO_FORMATS, DOCUMENT_EXTENSIONS, IORegistry } from '@open-pencil/core/io'
 import { readBoundedBody } from '@open-pencil/core/io/remote'
 import { errorMessage, isAbortError } from '@open-pencil/std/errors'
 import { anySignal } from '@open-pencil/std/timing'
@@ -14,9 +16,15 @@ import { setOpenPencilOpenFileHandler } from '@/app/browser-bridge'
 import { resolveBrowserFileURL, MAX_REMOTE_DOCUMENT_BYTES } from '@/app/document/io/browser'
 import type { EditorStore } from '@/app/editor/active-store'
 import { notificationMessages } from '@/app/i18n/notifications'
-import { rememberRecentFile } from '@/app/recent-files'
+import {
+  drawHomeCardCover,
+  rememberRecentBrowserFile,
+  rememberRecentFile,
+  reserveRecentBrowserFileId
+} from '@/app/recent-files'
 import { toast } from '@/app/shell/ui'
-import { getTabsSnapshot, openFileInNewTab, switchTab } from '@/app/tabs'
+import { getTabForStore, getTabsSnapshot, openFileInNewTab, switchTab } from '@/app/tabs'
+import type { OpenInTabOptions } from '@/app/tabs/open/file'
 import { findTabByFileIdentity } from '@/app/tabs/open/identity'
 import { isTauri } from '@/app/tauri/env'
 import { IS_BROWSER } from '@/constants'
@@ -51,9 +59,62 @@ fileDialog.onChange((files) => {
  * Opens a picked or dropped document in a new tab, rejecting formats OpenPencil cannot read.
  * A file system handle, when the browser provides one, lets the tab save back to the file.
  */
-export async function openDesignFile(file: File, handle?: FileSystemFileHandle): Promise<void> {
+export async function openDesignFile(
+  file: File,
+  handle?: FileSystemFileHandle,
+  options: Pick<OpenInTabOptions, 'path' | 'recentBrowserFileId' | 'signal'> = {}
+): Promise<EditorStore> {
   assertSupportedDesignFile(file.name)
-  await openFileInNewTab(file, { handle })
+  const rememberInBrowser =
+    IS_BROWSER && !isTauri() && (!options.path || options.recentBrowserFileId !== undefined)
+  const recentBrowserFileId = rememberInBrowser
+    ? (options.recentBrowserFileId ?? (await reserveRecentBrowserFileId(handle ?? file)))
+    : undefined
+  const reusing = recentBrowserFileId
+    ? getTabsSnapshot().some((tab) => tab.store.getRecentBrowserFileId() === recentBrowserFileId)
+    : false
+  const opening = openFileInNewTab(file, {
+    handle,
+    path: options.path,
+    recentBrowserFileId,
+    signal: options.signal
+  })
+  const inferredKind = file.name.toLowerCase().endsWith(`.${DOCUMENT_EXTENSIONS.board}`)
+    ? 'board'
+    : 'design'
+  const remember = (documentKind: 'design' | 'board', fallbackCover?: () => Uint8Array | null) =>
+    recentBrowserFileId && !reusing
+      ? rememberRecentBrowserFile(
+          handle ?? file,
+          documentKind,
+          recentBrowserFileId,
+          file,
+          fallbackCover
+        )
+      : Promise.resolve(undefined)
+
+  try {
+    const store = await opening
+    const openedGraph = store.graph
+    const rememberedId = await remember(store.state.documentKind, () => {
+      if (!getTabForStore(store) || store.graph !== openedGraph || !store.renderer) return null
+      return drawHomeCardCover(openedGraph, store.renderer)
+    }).catch((error: unknown) => {
+      console.warn('[Recent files] Could not record the opened browser file:', error)
+      return undefined
+    })
+    if (rememberedId && getTabForStore(store)?.store === store) {
+      store.setRecentBrowserFileId(rememberedId)
+    }
+    return store
+  } catch (error) {
+    if (isAbortError(error)) {
+      await remember(inferredKind).catch((rememberError: unknown) => {
+        console.warn('[Recent files] Could not record the closed browser file:', rememberError)
+      })
+    }
+    throw error
+  }
 }
 
 if (IS_BROWSER && 'window' in globalThis) {
@@ -70,7 +131,18 @@ function fileNameFromURL(url: URL): string {
   return decode(basename(url.pathname)) || 'file.fig'
 }
 
-/** Fetches a document over HTTP and opens it in a new tab. Browser builds only. */
+/** Keeps a fetched document available offline without storing its URL or fetch credentials. */
+export function openLinkedDesignFile(
+  file: File,
+  address: string,
+  options: Pick<OpenInTabOptions, 'path' | 'signal'> = {}
+): Promise<EditorStore> {
+  const url = new URL(address)
+  url.hash = ''
+  const recentBrowserFileId = `browser:link:${bytesToHex(sha256(utf8ToBytes(url.href)))}`
+  return openDesignFile(file, undefined, { ...options, recentBrowserFileId })
+}
+
 /** Opens the design file at `url` in a new tab, and resolves with that tab's store. */
 export async function openBrowserFileFromURL(url: URL, init?: RequestInit): Promise<EditorStore> {
   // The cap needs a controller of its own, so a caller's signal is combined with it
@@ -89,7 +161,7 @@ export async function openBrowserFileFromURL(url: URL, init?: RequestInit): Prom
   const name = fileNameFromURL(url)
   assertSupportedDesignFile(name)
   const file = new File([bytes], name, { type: 'application/octet-stream' })
-  return openFileInNewTab(file, { path: url.href })
+  return openLinkedDesignFile(file, url.href, { path: url.href })
 }
 
 function isSupportedDesignFile(fileName: string): boolean {
@@ -117,6 +189,7 @@ export async function openDesignFileBatch<T>(
     try {
       await openItem(item)
     } catch (error) {
+      if (isAbortError(error)) continue
       const name = displayName(item)
       const detail = errorMessage(error)
       console.error(`Failed to open ${name}:`, error)
@@ -190,11 +263,7 @@ export async function openFileDialog() {
       await openDesignFileBatch(
         handles,
         (handle) => handle.name,
-        async (handle) => {
-          const file = await handle.getFile()
-          assertSupportedDesignFile(file.name)
-          await openFileInNewTab(file, { handle })
-        }
+        async (handle) => openDesignFile(await handle.getFile(), handle)
       )
       return
     } catch (e) {

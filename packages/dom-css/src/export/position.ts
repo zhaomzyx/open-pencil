@@ -62,8 +62,8 @@ export function placement(
 }
 
 /**
- * Place a layer by its constraints when its parent does not lay it out. A frame without auto
- * layout becomes the containing block of the children it places.
+ * Place a layer by its constraints when its parent does not lay it out. Containers anchor their
+ * absolutely positioned children even when they lay out their other children with flex or grid.
  */
 export function addPositioning(
   style: DesignStyleDeclaration,
@@ -74,7 +74,7 @@ export function addPositioning(
   if (placed) {
     style.position = 'absolute'
     addConstrainedPlacement(style, node, placed.parent)
-  } else if (node.layoutMode === 'NONE' && node.type !== 'TEXT' && node.childIds.length > 0) {
+  } else if (node.type !== 'TEXT' && node.childIds.length > 0) {
     style.position = 'relative'
   }
 }

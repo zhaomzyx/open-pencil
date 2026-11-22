@@ -59,6 +59,15 @@ Press <kbd>⌥</kbd><kbd>⌘</kbd><kbd>↩</kbd> (<kbd>Ctrl</kbd> + <kbd>Alt</kb
 
 Behaviours are saved in `.fig` files and published with library components.
 
+### Preview a flow across frames
+
+1. Place each screen in a top-level frame on the same page. Select the first frame, open **Prototype**, and mark it as the **Starting frame**.
+2. Select a button or another layer inside the frame. Under **On click**, choose **Add action**, then **Navigate to**, and select the destination frame.
+3. Click ▶ to play from the starting frame. **Go back** returns to the previous screen in this preview. Restart the preview to return to the starting frame.
+4. Save the document as a `.fig` file to keep the flow with the editable artwork.
+
+For a confirmation dialog, use a separate frame as the overlay. The button that opens it targets that frame. Give **Cancel** a close-overlay action. For a quantity such as an inventory count, create a numeric variable with the starting quantity and bind a text layer to it. Give **Confirm** an action that adds `-1` when the count is greater than zero, followed by the close-overlay action. Each preview pane gets its own working value. Reset restores the starting count.
+
 ## Component Libraries
 
 A component library publishes reusable components, shared styles, and variable collections as an immutable revision. Each published asset has stable library, asset, and revision identity, so different instances can remain on different revisions until you explicitly update them.

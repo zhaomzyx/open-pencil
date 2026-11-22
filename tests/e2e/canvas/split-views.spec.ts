@@ -115,14 +115,14 @@ test.describe('split canvas views', () => {
     const panes = page.locator('[data-active-pane]')
     const headers = page.locator('[data-slot="canvas-pane-header"]')
 
-    await page.keyboard.press('Meta+\\')
+    await page.keyboard.press('ControlOrMeta+\\')
     await expect(page.getByTestId('layers-panel')).not.toBeVisible()
     await expect(panes).toHaveCount(2)
     await expect(surfaces).toHaveCount(4)
     await expect(kept).toHaveCount(4)
     await expect(headers).toHaveCount(0)
 
-    await page.keyboard.press('Meta+\\')
+    await page.keyboard.press('ControlOrMeta+\\')
     await expect(page.getByTestId('layers-panel')).toBeVisible()
     await expect(headers).toHaveCount(2)
     await expect(surfaces).toHaveCount(4)

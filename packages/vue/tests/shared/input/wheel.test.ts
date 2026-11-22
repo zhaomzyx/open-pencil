@@ -118,6 +118,40 @@ describe('wheel steps', () => {
     expect(createWheelSteps('mac', () => 0.25)(event(4))).toEqual({ kind: 'pan', dx: 0, dy: 8 })
   })
 
+  test('zooms a vertical workbench scroll at the mouse wheel rate and honors zoom speed', () => {
+    const step = createWheelSteps('mac', () => 0.5, 'zoom')
+    expect(zoomScale(step(event(40)))).toBeCloseTo(Math.exp(-0.1))
+    expect(step(event(50, { deltaX: 100 }))).toEqual(
+      createWheelSteps('mac')(event(50, { deltaX: 100 }))
+    )
+    expect(zoomScale(createWheelSteps('windows', () => 1, 'zoom')(notch(0)))).toBeCloseTo(
+      Math.exp(-0.04)
+    )
+  })
+
+  test('steps one preset along the dominant Shift+wheel axis in workbench mode', () => {
+    const step = createWheelSteps('other', () => 0.25, 'zoom')
+    expect(step(event(-100, { shiftKey: true }))).toEqual({ kind: 'fixed-zoom', direction: 1 })
+    expect(step(event(-1, { deltaX: 60, shiftKey: true }))).toEqual({
+      kind: 'fixed-zoom',
+      direction: -1
+    })
+    expect(step(event(0, { shiftKey: true }))).toEqual({ kind: 'pan', dx: 0, dy: 0 })
+    expect(createWheelSteps('other')(event(8, { shiftKey: true }))).toEqual({
+      kind: 'pan',
+      dx: 16,
+      dy: 0
+    })
+  })
+
+  test('keeps modifier zoom ahead of Shift presets in workbench mode', () => {
+    const step = createWheelSteps('mac', () => 1, 'zoom')
+    expect(zoomScale(step(event(50, { ctrlKey: true, shiftKey: true })))).toBeCloseTo(0.5)
+    expect(zoomScale(step(event(10, { metaKey: true, shiftKey: true })))).toBeCloseTo(
+      Math.exp(-0.05)
+    )
+  })
+
   test('moves 16 px per Windows wheel notch and speeds up when notches come within 50 ms', () => {
     const step = createWheelSteps('windows')
     expect(panY(step(notch(0)))).toBe(16)

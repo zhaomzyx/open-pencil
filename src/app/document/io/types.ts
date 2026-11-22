@@ -12,6 +12,8 @@ export type DocumentSourceAccess = {
   setFilePath: (path: string | null) => void
   getDownloadName: () => string | null
   setDownloadName: (name: string | null) => void
+  getRecentBrowserFileId?: () => string | null
+  setRecentBrowserFileId?: (id: string | null) => void
   getStorageBinding: () => StorageDocumentBinding | null
   setStorageBinding: (binding: StorageDocumentBinding | null) => void
   /** Whether saving writes in place rather than asking for a location. */

@@ -116,6 +116,18 @@ Writing only the older fields can produce visible content with nonfunctional pro
 Variable bindings and component-property bindings share parameter maps. Combining them must
 preserve both; one must not replace the whole map containing the other.
 
+## Prototype interactions
+
+Frame flow starts use `prototypeStartingPoint`. Click navigation, overlay, back, close,
+number assignments, increments and single-branch numeric conditions use native reaction records.
+The writer translates layer and variable references to file GUIDs. Preview text bindings and
+references without a file GUID travel in OpenPencil plugin data. Variable initial values come
+from the document’s variable definitions.
+
+Editing a supported click action keeps unrelated actions in their original order, including
+URLs and component variant swaps. Unchanged native transitions retain their timing and easing.
+Opening an older file also resolves its canvas-level `prototypeStartNodeID` to the start frame.
+
 ## Validation boundary
 
 An archive that encodes successfully is not necessarily interpreted correctly by Figma. A

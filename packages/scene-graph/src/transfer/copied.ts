@@ -3,6 +3,7 @@ import { isEqual, mapValues } from 'es-toolkit'
 import { componentPropertyDefinitions } from '../components/properties'
 import type { SceneGraph } from '../graph'
 import { remapInstanceOverrideState } from '../instances/overrides'
+import { remappedPrototype } from '../prototype/references'
 import { remapStyleRunReferences } from '../text/references'
 import type { ComponentPropertyDefinition, SceneNode } from '../types'
 
@@ -52,7 +53,7 @@ export function resolvedReferences(
   resolve: ReferenceResolvers,
   swapProperties: ReadonlySet<string>
 ): Partial<SceneNode> {
-  const changes: Partial<SceneNode> = {}
+  const changes = remappedPrototype(node, resolve.endpoint, resolve.variable)
   const componentId = node.componentId
     ? resolve.component(node.componentId, previous.componentId)
     : null

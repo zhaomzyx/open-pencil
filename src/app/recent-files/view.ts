@@ -9,18 +9,29 @@ import {
   type RecentDocumentView
 } from './store'
 
-type ViewedDocument = Pick<
+type DocumentIdentitySource = Pick<
   EditorStore,
-  'graph' | 'state' | 'getDocumentFilePath' | 'getStorageBinding' | 'getViewportSize'
+  'getDocumentFilePath' | 'getRecentBrowserFileId' | 'getStorageBinding' | 'getSourceIdentity'
 >
 
-function recentIdOf(store: ViewedDocument): string | null {
-  return recentDocumentIdOf(store.getDocumentFilePath(), store.getStorageBinding())
+type ViewedDocument = DocumentIdentitySource &
+  Pick<EditorStore, 'graph' | 'state' | 'getViewportSize'>
+
+/** The recent-files id of a document by its browser id, binding, path, or known handle. */
+export function recentDocumentIdOfStore(store: DocumentIdentitySource): string | null {
+  return (
+    store.getRecentBrowserFileId() ??
+    recentDocumentIdOf(
+      store.getDocumentFilePath(),
+      store.getStorageBinding(),
+      store.getSourceIdentity().handle
+    )
+  )
 }
 
 /** Keeps the page and view a tab shows its document at, for the document's next open. */
 export function rememberDocumentView(store: ViewedDocument): void {
-  const id = recentIdOf(store)
+  const id = recentDocumentIdOfStore(store)
   if (!id) return
   const { width, height } = store.getViewportSize()
   const { zoom, currentPageId } = store.state
@@ -36,7 +47,7 @@ export function rememberDocumentView(store: ViewedDocument): void {
  * visible pages; an internal page an automation left current opens the first page instead.
  */
 export function rememberedDocumentView(store: ViewedDocument): RecentDocumentView | null {
-  const id = recentIdOf(store)
+  const id = recentDocumentIdOfStore(store)
   const view = id ? recentDocumentView(id) : null
   if (!view || !store.graph.getPages().some((page) => page.id === view.pageId)) return null
   return view

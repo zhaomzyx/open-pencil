@@ -1,5 +1,6 @@
 import { cloneNodeProps } from '../copy'
 import { overriddenBindingField, remapInstanceOverrideState } from '../instances/overrides'
+import { prototypeReferences } from '../prototype/references'
 import { referencedStyleIds } from '../shared-styles'
 import { styleRunReferences } from '../text/references'
 import type { ComponentPropertyType, SceneNode } from '../types'
@@ -9,7 +10,10 @@ import type { VariableTransferReferences } from './variables'
 
 export function semanticTransferReferences(node: SceneNode): string[] {
   const runs = styleRunReferences(node.styleRuns)
+  const prototype = prototypeReferences(node)
   return [
+    ...prototype.layers,
+    ...prototype.variables,
     ...(node.componentId ? [node.componentId] : []),
     ...Object.values(node.boundVariables),
     ...runs.variables,
@@ -74,6 +78,7 @@ export function prepareNodeTransfer(
     result,
     remappedResourceReferences(source, {
       variable,
+      prototypeVariable: (id) => refs.variables.get(id) ?? id,
       collection: (id) => required(refs.collections, id, 'collection'),
       mode: (id) => required(refs.modes, id, 'mode'),
       style,

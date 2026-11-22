@@ -37,6 +37,7 @@ describe('canvas pane registry', () => {
     const state = createDefaultEditorState('page')
     state.selectedIds = new Set(['selected'])
     state.hoveredNodeId = 'hovered'
+    state.canvasView = { id: 'play', revision: 1 }
     const registry = createCanvasPaneRegistry(state)
     const first = registry.getActivePane()
     const second = registry.splitPane(first.id, 'horizontal')
@@ -44,6 +45,7 @@ describe('canvas pane registry', () => {
     expect(second?.currentPageId).toBe('page')
     expect(second?.selectedIds.size).toBe(0)
     expect(second?.hoveredNodeId).toBeNull()
+    expect(second?.canvasView).toEqual({ id: 'edit' })
     expect(registry.visiblePaneCount.value).toBe(2)
     expect(state.selectedIds.size).toBe(0)
 

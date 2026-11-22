@@ -19,6 +19,7 @@
   "vectorizeCredentialFailed": "{error}. حدّثه من الإعدادات ← خدمات الصور.",
   "vectorizeFailed": "تعذّر على {provider} تحويل هذه الصورة إلى متجهات: {error}",
   "operationFailed": "فشلت العملية: {error}",
+  "pageKeptForUnsavedChanges": "ظلت الصفحة مفتوحة. احفظ التغييرات في {names} قبل إعادة التحميل أو المغادرة.",
   "storageConnected": "تم الاتصال. مساحة التخزين جاهزة.",
   "storageConnectionFailed": "تعذّر الاتصال بالتخزين: {error}",
   "nodeID": "معرّف العقدة",

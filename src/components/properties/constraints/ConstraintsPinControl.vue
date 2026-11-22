@@ -11,6 +11,7 @@ import {
 import { useI18n } from '@open-pencil/vue/i18n'
 import type { ConstraintsControlActions } from '@open-pencil/vue/primitives/ConstraintsControl'
 
+import { useInlineSide } from '@/components/ui/direction/inline-side'
 import Tip from '@/components/ui/overlay/Tip.vue'
 import constraintsTheme from '@/theme/constraints'
 
@@ -30,6 +31,7 @@ const { horizontal, vertical, actions } = defineProps<{
 }>()
 
 const { panels } = useI18n()
+const canvasSide = useInlineSide('start')
 const constraintStyles = tv(constraintsTheme)
 const horizontalPins = computed(() => constraintPins(horizontal))
 const verticalPins = computed(() => constraintPins(vertical))
@@ -100,19 +102,21 @@ function activate(pin: PinItem, event: MouseEvent) {
     :data-scale="horizontal === 'SCALE' || vertical === 'SCALE' || undefined"
     :class="diagramStyles.diagram()"
   >
-    <Tip v-for="pin in pins" :key="pin.position" :label="pin.label">
-      <button
-        type="button"
-        data-slot="pin"
-        :data-axis="pin.axis"
-        :data-edge="pin.edge"
-        :aria-label="pin.label"
-        :aria-pressed="pin.active"
-        :class="pinStyles(pin).pin()"
-        @click="activate(pin, $event)"
-      >
-        <span :class="pinStyles(pin).pinMark()" />
-      </button>
+    <Tip v-for="pin in pins" :key="pin.position" :label="pin.label" :side="canvasSide" as-child>
+      <span class="pointer-events-none absolute inset-0">
+        <button
+          type="button"
+          data-slot="pin"
+          :data-axis="pin.axis"
+          :data-edge="pin.edge"
+          :aria-label="pin.label"
+          :aria-pressed="pin.active"
+          :class="pinStyles(pin).pin()"
+          @click="activate(pin, $event)"
+        >
+          <span :class="pinStyles(pin).pinMark()" />
+        </button>
+      </span>
     </Tip>
     <span
       v-if="horizontalPins.scale || verticalPins.scale"

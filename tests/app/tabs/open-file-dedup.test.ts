@@ -255,7 +255,10 @@ describe('openFileInNewTab deduplication', () => {
       documentName: 'Untitled',
       figBytes: new Uint8Array([1])
     })
-    await settleFileOpen(restoreRecoverySnapshot('draft'))
+    await settleFileOpen(
+      Promise.all([restoreRecoverySnapshot('draft'), restoreRecoverySnapshot('draft')])
+    )
+    expect(figModule.readFigFile).toHaveBeenCalledTimes(1)
     const draft = getActiveStore()
     const count = tabCount()
 
@@ -429,7 +432,7 @@ describe('openFileInNewTab deduplication', () => {
     const file = new File([], 'same-name.fig')
 
     await settleFileOpen(openFileInNewTab(file))
-    await settleFileOpen(openFileInNewTab(file))
+    await settleFileOpen(openFileInNewTab(new File([], file.name)))
 
     expect(tabCount()).toBe(initialCount + 1)
     expect(figModule.readFigFile).toHaveBeenCalledTimes(2)

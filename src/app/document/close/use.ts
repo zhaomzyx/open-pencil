@@ -7,18 +7,43 @@ import { errorMessage } from '@open-pencil/std/errors'
 import { confirmAppExit, isExitApproved, pageAsksBeforeLeaving } from '@/app/document/close/exit'
 import { notificationMessages } from '@/app/i18n/notifications'
 import { toast } from '@/app/shell/ui'
+import { allTabs } from '@/app/tabs'
 import { IS_TAURI } from '@/constants'
+
+// Let an approved navigation dispatch pagehide before showing the notice.
+const STAY_NOTICE_DELAY_MS = 200
 
 export function useDocumentCloseProtection() {
   let closing = false
   let disposed = false
   const cleanup: Array<() => void> = []
+  let stayNoticeTimer: number | undefined
+
+  function cancelStayNotice() {
+    window.clearTimeout(stayNoticeTimer)
+    stayNoticeTimer = undefined
+  }
 
   useEventListener(window, 'beforeunload', (event) => {
     if (!pageAsksBeforeLeaving()) return
     event.preventDefault()
     event.returnValue = ''
+    cancelStayNotice()
+    stayNoticeTimer = window.setTimeout(() => {
+      stayNoticeTimer = undefined
+      if (!pageAsksBeforeLeaving()) return
+      const names = allTabs.value
+        .filter((tab) => tab.isDirty)
+        .map((tab) => tab.name)
+        .join(', ')
+      if (names) {
+        toast.warning(notificationMessages.get().pageKeptForUnsavedChanges({ names }), undefined, {
+          sticky: true
+        })
+      }
+    }, STAY_NOTICE_DELAY_MS)
   })
+  useEventListener(window, 'pagehide', cancelStayNotice)
 
   async function requestClose(close: () => Promise<void>) {
     if (closing) return
@@ -59,6 +84,7 @@ export function useDocumentCloseProtection() {
 
   onScopeDispose(() => {
     disposed = true
+    cancelStayNotice()
     for (const unsubscribe of cleanup) unsubscribe()
   })
 }

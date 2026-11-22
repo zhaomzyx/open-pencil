@@ -34,6 +34,7 @@ interface PageActions {
 const pageInput = templateRef<HTMLInputElement>('pageInput')
 const rename = useInlineRename((id, name) => pageActions.value?.rename(id, name))
 const { panels, pages: pageMessages } = useI18n()
+const { embedded = false } = defineProps<{ embedded?: boolean }>()
 const menuCls = useMenuUI({
   content: 'min-w-36',
   item: 'justify-start gap-2'
@@ -104,7 +105,7 @@ function setupPageRowRef(
 <template>
   <PageListRoot v-slot="{ pages, currentPageId, isDivider, actions }">
     <div data-test-id="pages-panel" :class="baseStyles.panel()">
-      <div :class="baseStyles.header()">
+      <div v-if="!embedded" :class="baseStyles.header()">
         <span data-test-id="pages-header" :class="baseStyles.title()">{{ panels.pages }}</span>
         <IconButton :label="panels.addPage" data-test-id="pages-add" @click="actions.add()">
           <icon-lucide-plus class="size-3.5" />
@@ -199,6 +200,15 @@ function setupPageRowRef(
           </AppContextMenuRoot>
         </div>
       </div>
+      <footer
+        v-if="embedded"
+        data-test-id="pages-footer"
+        class="flex shrink-0 items-center justify-center bg-panel-secondary p-1"
+      >
+        <IconButton :label="panels.addPage" data-test-id="pages-add" @click="actions.add()">
+          <icon-lucide-plus class="size-3.5" aria-hidden="true" />
+        </IconButton>
+      </footer>
     </div>
   </PageListRoot>
 </template>

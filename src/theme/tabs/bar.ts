@@ -19,7 +19,6 @@ const tabBarTheme = {
       focusStyles.ring
     ],
     closeIcon: 'size-3',
-    dirtyDot: 'size-1.5 shrink-0 rounded-full bg-accent',
     newTab: [
       'flex size-6 shrink-0 cursor-pointer touch-manipulation items-center justify-center self-center rounded text-muted transition-colors hover:bg-hover hover:text-surface ms-1.75',
       focusStyles.ring

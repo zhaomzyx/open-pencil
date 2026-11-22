@@ -6,6 +6,7 @@ export const commentMessageDefaults = {
   comment: 'Comment',
   comments: 'Comments',
   addComment: 'Add a comment',
+  pickPreviewLayer: 'Pick a layer to comment on',
   reply: 'Reply',
   send: 'Send',
   someone: 'Someone',

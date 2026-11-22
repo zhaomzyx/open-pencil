@@ -2,8 +2,10 @@ import { useEventListener } from '@vueuse/core'
 import { onScopeDispose, type Ref } from 'vue'
 
 import type { Editor } from '@open-pencil/core'
+import { ZOOM_MAX, ZOOM_MIN } from '@open-pencil/core/constants'
 import { emitNavigationTrace } from '@open-pencil/core/profiler'
 
+import { nextFixedZoom } from '#vue/shared/input/fixed-zoom'
 import { createRafScheduler } from '#vue/shared/input/raf-scheduler'
 
 const WHEEL_DELTA_LINE = 1
@@ -45,6 +47,7 @@ type WheelAccum = {
   deltaX: number
   deltaY: number
   zoomScale: number
+  fixedZoom: number | null
   zoomCenterX: number
   zoomCenterY: number
   hasZoom: boolean
@@ -60,7 +63,12 @@ export type WheelInput = WheelPanInput &
 
 export type WheelPanDelta = { dx: number; dy: number }
 export type WheelPlatform = 'mac' | 'windows' | 'other'
-export type WheelStep = { kind: 'pan'; dx: number; dy: number } | { kind: 'zoom'; scale: number }
+export type WheelMode = 'pan' | 'zoom'
+export type WheelNavigationOptions = { mode: WheelMode; isEnabled: () => boolean }
+export type WheelStep =
+  | { kind: 'pan'; dx: number; dy: number }
+  | { kind: 'zoom'; scale: number }
+  | { kind: 'fixed-zoom'; direction: 1 | -1 }
 
 export function currentWheelPlatform(): WheelPlatform {
   if (typeof navigator === 'undefined') return 'other'
@@ -121,7 +129,8 @@ function zoomStep(delta: number, perDelta: number): WheelStep {
  */
 export function createWheelSteps(
   platform: WheelPlatform = currentWheelPlatform(),
-  zoomSpeed: () => number = () => 1
+  zoomSpeed: () => number = () => 1,
+  mode: WheelMode = 'pan'
 ) {
   let lastNotch = { time: Number.NEGATIVE_INFINITY, signX: 0, signY: 0, step: 0 }
 
@@ -145,7 +154,15 @@ export function createWheelSteps(
   }
 
   return function wheelStep(event: WheelInput): WheelStep {
-    const zoom = isWheelZoom(event)
+    const modifiedZoom = isWheelZoom(event)
+    const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+    if (mode === 'zoom' && !modifiedZoom && event.shiftKey) {
+      // Chromium can report Shift+wheel as horizontal, so use the dominant axis.
+      const delta = horizontal ? event.deltaX : event.deltaY
+      if (delta !== 0) return { kind: 'fixed-zoom', direction: delta < 0 ? 1 : -1 }
+    }
+
+    const zoom = modifiedZoom || (mode === 'zoom' && !horizontal && event.deltaY !== 0)
     const notches = platform === 'windows' ? windowsNotches(event) : null
     const delta = notches ? notchStep(event, notches, zoom) : normalizedWheelDelta(event)
 
@@ -172,18 +189,20 @@ const NAVIGATION_SETTLE_DELAY_MS = 120
 export function setupWheelPanZoom(
   canvasRef: Ref<HTMLCanvasElement | null>,
   editor: Editor,
-  zoomSpeed: () => number = () => 1
+  zoomSpeed: () => number = () => 1,
+  options?: WheelNavigationOptions
 ) {
   const wheelAccum: WheelAccum = {
     deltaX: 0,
     deltaY: 0,
     zoomScale: 1,
+    fixedZoom: null,
     zoomCenterX: 0,
     zoomCenterY: 0,
     hasZoom: false
   }
 
-  const wheelStep = createWheelSteps(currentWheelPlatform(), zoomSpeed)
+  const wheelStep = createWheelSteps(currentWheelPlatform(), zoomSpeed, options?.mode)
   let settleTimer: ReturnType<typeof setTimeout> | null = null
 
   function scheduleSettle() {
@@ -197,25 +216,28 @@ export function setupWheelPanZoom(
   }
 
   function flushWheel() {
-    emitNavigationTrace('wheel:flush', {
-      deltaX: wheelAccum.deltaX,
-      deltaY: wheelAccum.deltaY,
-      zoomScale: wheelAccum.zoomScale,
-      zoom: wheelAccum.hasZoom
-    })
-    editor.setHoveredNode(null)
-    if (wheelAccum.hasZoom) {
-      editor.setZoomAroundPoint(
-        editor.state.zoom * wheelAccum.zoomScale,
-        wheelAccum.zoomCenterX,
-        wheelAccum.zoomCenterY
-      )
-    } else {
-      editor.pan(wheelAccum.deltaX, wheelAccum.deltaY)
+    // Split panes share the editor viewport. A later event can switch panes before this frame.
+    if (options?.mode !== 'zoom' || options.isEnabled()) {
+      const baseZoom = wheelAccum.fixedZoom ?? editor.state.zoom
+      const targetZoom = baseZoom * wheelAccum.zoomScale
+      emitNavigationTrace('wheel:flush', {
+        deltaX: wheelAccum.deltaX,
+        deltaY: wheelAccum.deltaY,
+        zoomScale:
+          wheelAccum.fixedZoom === null ? wheelAccum.zoomScale : targetZoom / editor.state.zoom,
+        zoom: wheelAccum.hasZoom
+      })
+      editor.setHoveredNode(null)
+      if (wheelAccum.hasZoom) {
+        editor.setZoomAroundPoint(targetZoom, wheelAccum.zoomCenterX, wheelAccum.zoomCenterY)
+      } else {
+        editor.pan(wheelAccum.deltaX, wheelAccum.deltaY)
+      }
     }
     wheelAccum.deltaX = 0
     wheelAccum.deltaY = 0
     wheelAccum.zoomScale = 1
+    wheelAccum.fixedZoom = null
     wheelAccum.hasZoom = false
     scheduleSettle()
   }
@@ -239,13 +261,20 @@ export function setupWheelPanZoom(
     })
 
     const step = wheelStep(event)
-    editor.setNavigationPhase(step.kind, performance.now())
+    editor.setNavigationPhase(step.kind === 'pan' ? 'pan' : 'zoom', performance.now())
 
-    if (step.kind === 'zoom') {
+    if (step.kind !== 'pan') {
       const rect = canvas.getBoundingClientRect()
       wheelAccum.zoomCenterX = event.clientX - rect.left
       wheelAccum.zoomCenterY = event.clientY - rect.top
-      wheelAccum.zoomScale *= step.scale
+      if (step.kind === 'fixed-zoom') {
+        const pendingZoom = (wheelAccum.fixedZoom ?? editor.state.zoom) * wheelAccum.zoomScale
+        const visibleZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pendingZoom))
+        wheelAccum.fixedZoom = nextFixedZoom(visibleZoom, step.direction, ZOOM_MIN, ZOOM_MAX)
+        wheelAccum.zoomScale = 1
+      } else {
+        wheelAccum.zoomScale *= step.scale
+      }
       wheelAccum.hasZoom = true
     } else {
       wheelAccum.deltaX -= step.dx
@@ -265,6 +294,7 @@ export function setupWheelPanZoom(
   )
 
   onScopeDispose(() => {
+    wheelScheduler.cancel()
     if (settleTimer !== null) clearTimeout(settleTimer)
   })
 }

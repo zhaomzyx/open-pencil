@@ -1,17 +1,27 @@
+import { expectDefined } from '@open-pencil/test-support/assert'
+
 import { expect, test, useEditorSetup } from '#tests/e2e/fixtures'
 import { openAppMenu } from '#tests/helpers/menu'
 
 const editor = useEditorSetup()
 
-test('menu bar is visible in browser mode', async () => {
-  const menubar = editor.page.locator('[role="menubar"]')
+test('menu bar is visible above the document tabs in browser mode', async () => {
+  const menubar = editor.page.getByTestId('editor-workspace-menubar').getByRole('menubar')
+  const tabBar = editor.page.locator('[data-slot="tab-bar"]')
   await expect(menubar).toBeVisible()
+  await expect(tabBar).toBeVisible()
+
+  const menuBounds = expectDefined(await menubar.boundingBox(), 'menu bounds')
+  const tabBounds = expectDefined(await tabBar.boundingBox(), 'document tab bounds')
+  expect(menuBounds.y + menuBounds.height).toBeLessThanOrEqual(tabBounds.y)
 })
 
 test('menu bar has all top-level menus', async () => {
-  const triggers = editor.page.locator('[role="menubar"] [role="menuitem"]')
-  const labels = await triggers.allTextContents()
-  expect(labels).toEqual(['File', 'Edit', 'View', 'Object', 'Text', 'Arrange'])
+  const triggers = editor.page
+    .getByTestId('editor-workspace-menubar')
+    .getByRole('menubar')
+    .getByRole('menuitem')
+  await expect(triggers).toHaveText(['File', 'Edit', 'View', 'Object', 'Text', 'Arrange', 'Help'])
 })
 
 test('File menu opens and shows items', async () => {

@@ -92,6 +92,8 @@ export function createEditorStoreModules(
     saveFigFileAs: documentIO.saveFigFileAs,
     getDocumentFilePath: documentIO.getDocumentFilePath,
     getDocumentFileHandle: documentIO.getDocumentFileHandle,
+    getRecentBrowserFileId: documentIO.getRecentBrowserFileId,
+    setRecentBrowserFileId: documentIO.setRecentBrowserFileId,
     hasWritableSource: documentIO.hasWritableSource,
     getSourceIdentity: documentIO.getSourceIdentity,
     getStorageBinding: documentIO.getStorageBinding,

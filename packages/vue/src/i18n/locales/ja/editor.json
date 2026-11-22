@@ -14,6 +14,7 @@
   "openChat": "AI チャットを開く",
   "closeChat": "AI チャットを閉じる",
   "previewing": "プレビュー中",
+  "showInteractions": "インタラクションを表示",
   "resetPreview": "リセット",
   "leavePreview": "プレビューを終了 ({shortcut})",
   "startPreview": "プレビュー ({shortcut})"

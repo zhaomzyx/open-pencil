@@ -3,6 +3,7 @@ import { appendAll } from '@open-pencil/std/arrays'
 import type { SceneGraph } from '../graph'
 import { imagePaintHashes } from '../images'
 import { overriddenBindingField } from '../instances/overrides'
+import { prototypeReferences } from '../prototype/references'
 import { referencedStyleIds, sharedStyleLayers } from '../shared-styles'
 import { styleRunReferences } from '../text/references'
 import type { SceneNode } from '../types'
@@ -30,6 +31,7 @@ export function layerVariableIds(node: SceneNode): string[] {
   const overridden = [...self, ...[...descendants.values()].flatMap((fields) => [...fields])]
   return [
     ...Object.values(node.boundVariables),
+    ...prototypeReferences(node).variables,
     ...styleRunReferences(node.styleRuns).variables,
     ...overridden.flatMap(([field, value]) =>
       typeof value === 'string' && overriddenBindingField(field) !== null ? [value] : []

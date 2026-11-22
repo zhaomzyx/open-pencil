@@ -93,6 +93,7 @@ import type {
 import type { Vector, GUID } from '@open-pencil/scene-graph/primitives'
 
 import { savedFace } from './font/style'
+import { importedPrototype } from './prototype'
 import { numericVariableAssignmentScales, sourceVariableBindingScales } from './variable/bindings'
 export { VARIABLE_BINDING_FIELDS, VARIABLE_BINDING_FIELDS_INVERSE } from './variable/bindings'
 import { maxOf, minOf } from '@open-pencil/std/arrays'
@@ -830,7 +831,7 @@ export function nodeChangeToProps(
     variableModes: extractVariableModes(nc),
     exportSettings: extractExportSettings(nc),
     status: extractNodeStatus(nc),
-    pluginData: extractPluginData(nc),
+    pluginData: importedPrototype(nc, extractPluginData(nc)),
     librarySource: extractLibrarySource(nc),
     libraryLayerId: extractLibraryLayerId(nc),
     pluginRelaunchData: extractPluginRelaunchData(nc),
@@ -1317,6 +1318,7 @@ export const FIGMA_RAW_NODE_FIELD_KEYS = [
   'effects',
   'sectionStatusInfo',
   'prototypeStartNodeID',
+  'prototypeStartingPoint',
   'prototypeInteractions',
   'transitionInfo',
   'codeSyntax',

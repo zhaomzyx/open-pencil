@@ -35,6 +35,7 @@ import { updateHoverCursor } from '#vue/shared/input/select/hover'
 import { resolveShapeHandleHover } from '#vue/shared/input/shape-handles'
 import { useSpaceHeld } from '#vue/shared/input/space-key'
 import type { DragState } from '#vue/shared/input/types'
+import type { WheelMode } from '#vue/shared/input/wheel'
 
 /**
  * Wires pointer and mouse interaction to an OpenPencil canvas.
@@ -53,7 +54,9 @@ export function useCanvasInput(
   onActivate?: () => void,
   isEnabled: () => boolean = () => true,
   /** How far wheel and pinch zoom move per event; 1 is the default rate. */
-  zoomSpeed: () => number = () => 1
+  zoomSpeed: () => number = () => 1,
+  /** The workbench opts into scrolling to zoom and Shift+wheel presets. */
+  wheelMode: WheelMode = 'pan'
 ) {
   const drag = ref<DragState | null>(null)
   const profile = () => resolveEditorProfile(editor.state)
@@ -483,7 +486,10 @@ export function useCanvasInput(
     canvasLabelEdit.commit()
   })
 
-  setupPanZoom(canvasRef, editor, drag, onMouseDown, onMouseMove, onMouseUp, zoomSpeed)
+  setupPanZoom(canvasRef, editor, drag, onMouseDown, onMouseMove, onMouseUp, zoomSpeed, {
+    mode: wheelMode,
+    isEnabled
+  })
   return {
     drag,
     cursorOverride,

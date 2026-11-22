@@ -27,6 +27,7 @@ export const editorMessageDefaults = {
   openChat: 'Open AI chat',
   closeChat: 'Close AI chat',
   previewing: 'Previewing',
+  showInteractions: 'Show interactions',
   startPreview: params('Preview ({shortcut})'),
   resetPreview: 'Reset',
   leavePreview: params('Leave preview ({shortcut})')

@@ -6,7 +6,9 @@ import { useEventListener, whenever } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { resolveEditorProfile } from '@open-pencil/core'
 import { errorMessage } from '@open-pencil/std/errors'
+import { useViewportKind } from '@open-pencil/vue/editor/viewport-kind'
 import { useI18n } from '@open-pencil/vue/i18n'
 
 import {
@@ -21,6 +23,7 @@ import { offerCampaignPrompt, startCampaignClock } from '@/app/campaigns'
 import { openingCloudLink, shownEditorStore, versionPreviewKey } from '@/app/cloud/integration'
 import { useJoinRoom } from '@/app/collab/join'
 import { bindDesktopRoomLinks } from '@/app/collab/room/links'
+import { showsRoomDocument } from '@/app/collab/room/status'
 import { COLLAB_KEY, useCollab } from '@/app/collab/use'
 import { openDemoDocument } from '@/app/demo/document'
 import type { PendingOpenFile } from '@/app/document/io/pending-open'
@@ -58,9 +61,11 @@ import {
 } from '@/components/cloud/integration'
 import CommandPalette from '@/components/commands/CommandPalette.vue'
 import EditorWorkspace from '@/components/editor/EditorWorkspace.vue'
+import EditorWorkspaceMenubar from '@/components/editor/EditorWorkspaceMenubar.vue'
 import FileApiBanner from '@/components/FileApiBanner.vue'
 import FontStatusBanner from '@/components/font-status/FontStatusBanner.vue'
 import HomeWorkspace from '@/components/home/HomeWorkspace.vue'
+import type { LayersPanelView } from '@/components/LayersPanel.vue'
 import RenameSelectionDialog from '@/components/selection/RenameSelectionDialog.vue'
 import LoadingScreen from '@/components/shell/LoadingScreen.vue'
 import TabBar from '@/components/TabBar.vue'
@@ -79,6 +84,20 @@ const shown = computed(() => {
     key: tab.id + versionPreviewKey(tab.store)
   }
 })
+const shownDocument = computed(() => (shown.value?.tab.kind === 'document' ? shown.value : null))
+const { isMobile } = useViewportKind()
+const layersPanel = ref<LayersPanelView>('layers')
+watch(
+  () => shownDocument.value?.key,
+  () => (layersPanel.value = 'layers')
+)
+const canvasAlone = computed(() => {
+  const store = shownDocument.value?.tab.store
+  return !!store && !resolveEditorProfile(store.state).panels && store.visiblePaneCount.value <= 1
+})
+const showPanels = computed(
+  () => !!shownDocument.value?.tab.store.state.showUI && !canvasAlone.value
+)
 // Shortcuts, menus, and the clipboard act on what the tab shows.
 watch(
   () => shown.value?.tab.store,
@@ -182,6 +201,10 @@ useDocumentDrop()
 
 const collab = useCollab()
 provide(COLLAB_KEY, collab)
+const showEditorControls = computed(() => {
+  const status = collab.state.value.status
+  return showPanels.value && (!status || showsRoomDocument(status))
+})
 exposeCollaborationActions(collab, joinRoomFromInput)
 exposeAutomationTestRequests()
 syncTabAddress(router, route)
@@ -318,17 +341,22 @@ onUnmounted(() => {
     <CloudCommunityBanner />
     <RenameSelectionDialog />
     <CommandPalette />
-    <TabBar />
-    <HomeWorkspace
-      v-show="activeTab && activeTab.kind !== 'document'"
-      @new-document="createDocumentTab"
+    <EditorWorkspaceMenubar
+      v-if="appRuntimeConfig.showChrome && !isMobile"
+      v-show="!shownDocument || showEditorControls"
+      :show-editor-controls="showEditorControls"
     />
+    <TabBar />
     <CloudVersionDialog />
     <EditorWorkspace
-      v-if="shown && shown.tab.kind === 'document'"
-      :key="shown.key"
-      :tab="shown.tab"
+      v-if="shownDocument"
+      :key="shownDocument.key"
+      v-model:layers-panel="layersPanel"
+      :tab="shownDocument.tab"
+      :canvas-alone="canvasAlone"
+      :show-panels="showPanels"
     />
+    <HomeWorkspace v-else @new-document="createDocumentTab" />
     <LoadingScreen v-if="openingCloudLink" />
   </div>
 </template>

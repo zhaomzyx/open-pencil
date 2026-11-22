@@ -12,8 +12,6 @@ export interface LayerRowMetrics {
   /** Space a variable mode badge takes besides its text, and an issue mark with its gap. */
   badge: number
   issueMark: number
-  /** The list's own width, which rows fill before they scroll. */
-  viewportWidth: number
 }
 
 export interface LayerRowDecorations {
@@ -41,11 +39,10 @@ export function createTextMeasure() {
 }
 
 /**
- * How far the layer rows reach past the list sideways, as in Figma's layers panel: far enough
- * for the widest row's indent, whole name, mode badges, and issue mark, so no name is ever cut
- * short, only scrolled out of view.
+ * Minimum width for the widest row's indent, whole name, badges, and trailing controls.
+ * The viewport fills the available space and scrolls sideways when the rows need more.
  */
-export function rowsOverflow(
+export function minimumRowsWidth(
   rows: readonly LayerRow[],
   metrics: LayerRowMetrics,
   decorations: LayerRowDecorations,
@@ -63,5 +60,5 @@ export function rowsOverflow(
     if (decorations.showsIssue(row, expanded)) width += metrics.issueMark
     if (width > widest) widest = width
   }
-  return Math.max(0, Math.ceil(widest + metrics.buttons - metrics.viewportWidth))
+  return Math.ceil(widest + metrics.buttons)
 }

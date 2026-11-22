@@ -53,6 +53,8 @@ export function createDocumentSourceActions({
   setFilePath,
   getDownloadName,
   setDownloadName,
+  getRecentBrowserFileId,
+  setRecentBrowserFileId,
   getStorageBinding,
   setStorageBinding,
   hasWritableSource,
@@ -140,6 +142,8 @@ export function createDocumentSourceActions({
     setFileHandle,
     getDownloadName,
     setDownloadName,
+    getRecentBrowserFileId,
+    setRecentBrowserFileId,
     getStorageBinding,
     setStorageBinding,
     hasWritableSource,
@@ -189,7 +193,8 @@ export function createDocumentSourceActions({
     fileName: string,
     sourceFormat: string,
     handle?: FileSystemFileHandle,
-    path?: string
+    path?: string,
+    recentBrowserFileId?: string
   ) {
     stopWatchingFile()
     setStorageBinding(null)
@@ -197,6 +202,7 @@ export function createDocumentSourceActions({
     setFileHandle(isFig ? (handle ?? null) : null)
     setFilePath(isFig ? (path ?? null) : null)
     setDownloadName(figDownloadName(fileName, sourceFormat))
+    setRecentBrowserFileId?.(recentBrowserFileId ?? null)
     setSourceIdentity({ handle: handle ?? null, path: path ?? null })
     markDocumentSaved()
     void recovery.markProtectedVersion(changes.revision())
@@ -211,6 +217,7 @@ export function createDocumentSourceActions({
     setFileHandle(null)
     setFilePath(null)
     setDownloadName(documentFileName(documentName, state.documentKind))
+    setRecentBrowserFileId?.(null)
     setSourceIdentity({ handle: null, path: null })
     setStorageBinding(binding)
     state.documentName = documentName
@@ -224,6 +231,7 @@ export function createDocumentSourceActions({
     setStorageBinding(null)
     setFileHandle(null)
     setFilePath(path)
+    setRecentBrowserFileId?.(null)
     const downloadName = downloadNameFromPath(path)
     setDownloadName(downloadName)
     state.documentName = documentNameFromFigPath(downloadName)
@@ -243,6 +251,7 @@ export function createDocumentSourceActions({
       fileHandle: getFileHandle(),
       storageBinding: getStorageBinding(),
       downloadName: getDownloadName(),
+      recentBrowserFileId: getRecentBrowserFileId?.() ?? null,
       documentName: state.documentName
     }
     const restore = () => {
@@ -250,6 +259,7 @@ export function createDocumentSourceActions({
       setFileHandle(previous.fileHandle)
       setFilePath(previous.filePath)
       setDownloadName(previous.downloadName)
+      setRecentBrowserFileId?.(previous.recentBrowserFileId)
       state.documentName = previous.documentName
       if (previous.filePath || previous.fileHandle) void startWatchingFile()
     }
@@ -332,6 +342,8 @@ export function createDocumentSourceActions({
     markDocumentChanged: changes.markChanged,
     adoptChanges: changes.adopt,
     getStorageBinding,
+    getRecentBrowserFileId: getRecentBrowserFileId ?? (() => null),
+    setRecentBrowserFileId: setRecentBrowserFileId ?? (() => undefined),
     getRecoveryId: () => recovery.getRecoveryId(),
     adoptRecoverySnapshot: (id: string) => {
       changes.markChanged()

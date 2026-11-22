@@ -50,6 +50,7 @@ export default defineConfig(
       clipping: './src/clipping.ts',
       polygon: './src/polygon.ts',
       preview: './src/preview.ts',
+      'prototype/index': './src/prototype/index.ts',
       'primitives/index': './src/primitives/index.ts',
       resize: './src/resize.ts',
       'scaling/index': './src/scaling/index.ts',

@@ -40,6 +40,14 @@ Preview is a per-pane canvas view (`EditorViewState.canvasView`, `{ id: 'play', 
 
 Controls and DOM keys use layer paths (names below the island root), not node ids: a variant switch rebuilds an instance's layers with new ids, and a stable path keeps the DOM in place, including a focused input.
 
+## Single-screen prototypes
+
+When a page has a prototype start frame, Preview fits that frame in the pane. If the page has actions or a numeric text binding without a start, Preview uses the selected authored frame or the first authored frame. Pages without any of these continue to preview controls in place.
+
+`PrototypeStage` projects the current frame and its overlay stack as islands. The topmost island receives input. A click on text inside a hotspot activates the nearest layer with actions. A nested interactive control handles its own clicks. The island exposes original node IDs so a preview comment can attach to its source layer.
+
+The pane holds screen history, overlays and a snapshot of resolved numeric variables. Actions run in order, including the actions nested in a matching numeric condition. Bound text shows the current value. Back and Escape dismiss the top overlay and restore its trigger's focus. With no overlay, Back returns to the previous screen and Escape leaves preview. Reset restores the start frame and reads the initial variable values again. These operations leave the document and its undo history intact.
+
 ## Code export
 
 Export reads the same model as preview. `behaviourArgs` gives a component set its props: a boolean value drawn by an on/off variant property becomes `checked`, `pressed`, `open`, `disabled`, or `invalid`. `invalid` sets `data-invalid` on the root and `aria-invalid` on the control a person fills in: a field's input, or else the root.

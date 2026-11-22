@@ -34,6 +34,14 @@ const itemCls = menuItem({
       <DropdownMenuContent :side-offset="8" side="bottom" align="end" :class="menuCls.content">
         <MenuScrollArea>
           <DropdownMenuItem
+            :class="itemCls"
+            :disabled="!!hud.store.state.preparation"
+            @select="hud.store.startPlay()"
+          >
+            <icon-lucide-play class="size-4 text-muted" />
+            <span>{{ menuMessages.togglePreview }}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             v-for="item in hud.menuItems"
             :key="item.label"
             :class="itemCls"

@@ -12,6 +12,7 @@ import { useNotificationMessages } from '@/app/i18n/notifications'
 import { presenceOf, renameAgent } from '@/app/presence/registry'
 import type { FollowTarget } from '@/app/presence/types'
 import { toast } from '@/app/shell/ui'
+import { activeTab } from '@/app/tabs'
 import { presenceRows as buildPresenceRows } from '@/components/presence/rows'
 import { getShareURL } from '@/constants'
 
@@ -39,8 +40,11 @@ function createCollabPanelContext() {
   const peers = computed(() => collab?.remotePeers.value ?? [])
   const following = computed(() => collab?.following.value ?? null)
   const storeRef = useActiveEditorStoreRef()
+  const documentStore = computed(() =>
+    activeTab.value?.kind === 'document' ? storeRef.value : undefined
+  )
   const presenceRows = computed(() => {
-    const store = storeRef.value
+    const store = documentStore.value
     const voice = activeRoom.value?.voice
     const speaking = voice?.speaking.value ?? new Set<number>()
     return buildPresenceRows(
@@ -104,7 +108,8 @@ function createCollabPanelContext() {
   }
 
   function renameLocalAgent(agentId: string, name: string) {
-    if (storeRef.value) renameAgent(storeRef.value, agentId, name)
+    const store = documentStore.value
+    if (store) renameAgent(store, agentId, name)
   }
 
   return {

@@ -291,6 +291,12 @@
       "import": "./dist/preview.js",
       "default": "./dist/preview.js"
     },
+    "./prototype": {
+      "types": "./dist/prototype/index.d.ts",
+      "bun": "./src/prototype/index.ts",
+      "import": "./dist/prototype/index.js",
+      "default": "./dist/prototype/index.js"
+    },
     "./primitives": {
       "types": "./dist/primitives/index.d.ts",
       "bun": "./src/primitives/index.ts",

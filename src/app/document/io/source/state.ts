@@ -9,6 +9,7 @@ export function createDocumentSourceState() {
   const fileHandle = shallowRef<FileSystemFileHandle | null>(null)
   const filePath = shallowRef<string | null>(null)
   let downloadName: string | null = null
+  let recentBrowserFileId: string | null = null
   let sourceIdentity: DocumentSourceIdentity = { handle: null, path: null }
   // Reactive too, so the status beside the name follows a document saved to storage.
   const storageBinding = shallowRef<StorageDocumentBinding | null>(null)
@@ -27,6 +28,10 @@ export function createDocumentSourceState() {
     getDownloadName: () => downloadName,
     setDownloadName: (name: string | null) => {
       downloadName = name
+    },
+    getRecentBrowserFileId: () => recentBrowserFileId,
+    setRecentBrowserFileId: (id: string | null) => {
+      recentBrowserFileId = id
     },
     getSourceIdentity: () => sourceIdentity,
     setSourceIdentity: (identity: DocumentSourceIdentity) => {

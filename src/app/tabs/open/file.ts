@@ -20,10 +20,50 @@ import {
   reusableTabStore,
   showImportedGraph
 } from '@/app/tabs/open/show'
-import { getTabForStore, getTabsSnapshot, switchTab } from '@/app/tabs/state'
+import { getTabById, getTabForStore, getTabsSnapshot, switchTab } from '@/app/tabs/state'
 
 const io = new IORegistry(BUILTIN_IO_FORMATS)
 const fileOpenCoordinator = createFileOpenCoordinator()
+
+type FileObjectTab =
+  | { kind: 'pending'; id: string; completion: Promise<undefined>; signal: AbortSignal }
+  | { kind: 'existing'; id: string; source: DocumentSourceIdentity }
+
+// Recents can hand back the same File object even when the browser grants no file handle.
+// A closed tab leaves only its ID here, so retaining the File never retains its editor.
+const fileObjectTabs = new WeakMap<File, FileObjectTab>()
+
+function reuseFileObjectTab(file: File) {
+  const saved = fileObjectTabs.get(file)
+  if (!saved) return null
+  const tab = getTabById(saved.id)
+  if (!tab) return null
+
+  if (saved.kind === 'pending') {
+    if (saved.signal.aborted || !switchTab(tab.id)) return null
+    return { kind: 'pending' as const, completion: saved.completion, store: tab.store }
+  }
+
+  if (tab.store.getSourceIdentity() !== saved.source || tab.store.getStorageBinding()) return null
+  return switchTab(tab.id) ? { kind: 'existing' as const, store: tab.store } : null
+}
+
+function finishFileObjectOpen(
+  file: File,
+  {
+    store,
+    completion,
+    succeeded
+  }: { store: EditorStore; completion: Promise<undefined>; succeeded: boolean }
+): void {
+  const saved = fileObjectTabs.get(file)
+  if (saved?.kind !== 'pending' || saved.completion !== completion) return
+  if (succeeded) {
+    fileObjectTabs.set(file, { kind: 'existing', id: saved.id, source: store.getSourceIdentity() })
+  } else {
+    fileObjectTabs.delete(file)
+  }
+}
 
 function isDOMImportFile(file: File): boolean {
   return /\.(html?|xhtml)$/i.test(file.name)
@@ -38,6 +78,8 @@ export interface OpenedWebPage {
 export interface OpenInTabOptions {
   /** The file the browser granted, which saving writes back to. */
   handle?: FileSystemFileHandle
+  /** The Recents entry this browser file belongs to before its document is shown. */
+  recentBrowserFileId?: string
   /** Where the file lives: a desktop path, or the address a browser document came from. */
   path?: string
   /**
@@ -55,14 +97,40 @@ export interface OpenInTabOptions {
  */
 export async function openFileInNewTab(
   file: File,
-  { handle, path, webPage, signal }: OpenInTabOptions = {}
+  { handle, path, recentBrowserFileId, webPage, signal }: OpenInTabOptions = {}
 ): Promise<EditorStore> {
   const domImport = webPage !== undefined || isDOMImportFile(file)
+  const useFileObject = !handle && !path && !webPage
   const identity: DocumentSourceIdentity = {
     handle: handle ?? null,
     path: path ?? null
   }
   const decision = await fileOpenCoordinator.decide(async () => {
+    if (recentBrowserFileId) {
+      const pendingById =
+        await fileOpenCoordinator.findPendingByRecentBrowserFileId(recentBrowserFileId)
+      if (pendingById) {
+        const tab = getTabForStore(pendingById.store)
+        if (tab) switchTab(tab.id)
+        return {
+          kind: 'pending' as const,
+          completion: pendingById.completion,
+          store: pendingById.store
+        }
+      }
+
+      const existing = getTabsSnapshot().find(
+        (tab) => tab.store.getRecentBrowserFileId() === recentBrowserFileId
+      )
+      if (existing) {
+        switchTab(existing.id)
+        return { kind: 'existing' as const, store: existing.store }
+      }
+    }
+
+    const sameFile = useFileObject ? reuseFileObjectTab(file) : null
+    if (sameFile) return sameFile
+
     const pending = await fileOpenCoordinator.findPending(identity)
     if (pending) {
       const tab = getTabForStore(pending.store)
@@ -82,6 +150,7 @@ export async function openFileInNewTab(
 
     const opening = reusableTabStore()
     const { store } = opening
+    if (recentBrowserFileId) store.setRecentBrowserFileId(recentBrowserFileId)
     store.state.documentName = webPage?.title ?? filename(file.name) ?? file.name
     const load = store.preparationController.begin({
       kind: domImport ? 'dom-import' : 'document-open',
@@ -90,8 +159,17 @@ export async function openFileInNewTab(
 
     const completion = createDeferred<undefined>()
     void completion.promise.catch(() => undefined)
-    const pendingOpen = { completion: completion.promise, identity, store }
+    const pendingOpen = { completion: completion.promise, identity, recentBrowserFileId, store }
     fileOpenCoordinator.add(pendingOpen)
+    const tab = useFileObject ? getTabForStore(store) : undefined
+    if (tab) {
+      fileObjectTabs.set(file, {
+        kind: 'pending',
+        id: tab.id,
+        completion: completion.promise,
+        signal: load.signal
+      })
+    }
     return { kind: 'owner' as const, completion, pendingOpen, store, opening, load }
   })
 
@@ -142,7 +220,7 @@ export async function openFileInNewTab(
       store,
       imported,
       () => {
-        store.setDocumentSource(file.name, sourceFormat, handle, path)
+        store.setDocumentSource(file.name, sourceFormat, handle, path, recentBrowserFileId)
         if (isFig && path) watchOpenedFigCover(path, store)
       },
       load
@@ -160,5 +238,6 @@ export async function openFileInNewTab(
     signal?.removeEventListener('abort', cancel)
     if (succeeded) load.complete()
     fileOpenCoordinator.remove(pendingOpen)
+    finishFileObjectOpen(file, { store, completion: completion.promise, succeeded })
   }
 }

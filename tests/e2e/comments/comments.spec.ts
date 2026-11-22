@@ -90,16 +90,11 @@ test('a pin can be dragged, and the toolbar still picks tools in the Comment too
   expect(Math.round(moved.y + moved.height - (pin.y + pin.height))).toBe(40)
   await expect(thread()).toHaveCount(0)
 
-  // Scrolling over a pin pans the canvas under it; the pin's tip is its bottom edge.
-  const tip = moved.y + moved.height
-  await editor.page.mouse.move(moved.x + 8, tip - 8)
+  const zoom = editor.page.getByTestId('zoom-dropdown-trigger')
+  const zoomBefore = Number.parseFloat(await zoom.innerText())
+  await editor.page.mouse.move(moved.x + 8, moved.y + moved.height - 8)
   await editor.page.mouse.wheel(0, 100)
-  await expect
-    .poll(async () => {
-      const box = await pins().first().boundingBox()
-      return box ? tip - (box.y + box.height) : 0
-    })
-    .toBeGreaterThan(20)
+  await expect.poll(async () => Number.parseFloat(await zoom.innerText())).toBeLessThan(zoomBefore)
 
   await editor.page.getByTestId(toolbarToolTestId('RECTANGLE')).click()
   await expect(commentTool()).toHaveAttribute('aria-pressed', 'false')

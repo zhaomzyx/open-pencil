@@ -1,17 +1,17 @@
-import { focusStyles } from '@open-pencil/theme'
+import iconButtonTheme from '@/theme/button/icon-button'
 
 export default {
   base: [
-    'flex h-7 cursor-pointer items-center gap-1.5 rounded border-none px-3 text-2xs font-medium transition-colors',
-    focusStyles.ring
+    ...iconButtonTheme.base,
+    iconButtonTheme.variants.size.md,
+    'transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted'
   ],
   variants: {
     connection: {
-      idle: 'bg-accent text-on-accent hover:bg-accent/90',
+      idle: '',
       joining:
         'animate-pulse motion-reduce:animate-none border border-warning-border bg-warning-bg text-warning',
-      // Still a share action when connected; your avatar shows the room is live.
-      connected: 'bg-accent text-on-accent hover:bg-accent/90'
+      connected: ''
     }
   },
   defaultVariants: { connection: 'idle' }

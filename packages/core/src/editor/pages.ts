@@ -2,6 +2,7 @@ import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 import { instanceMainComponent } from '@open-pencil/scene-graph/instances'
 import type { Color } from '@open-pencil/scene-graph/primitives'
 
+import { restoreSubtree, snapshotSubtree } from '#core/editor/history/subtree'
 import {
   getPageColor,
   setDefaultPageBackground,
@@ -305,41 +306,125 @@ export function createPageActions(ctx: EditorContext, drawing?: PageDrawing) {
     pageViewportStore.clearPageViewports()
   }
 
+  function removePage(pageId: string, preferredPageId?: string): boolean {
+    const pages = ctx.graph.getPages()
+    const index = pages.findIndex((page) => page.id === pageId)
+    if (pages.length <= 1 || index === -1) return false
+
+    const needsPage =
+      ctx.state.currentPageId === pageId ||
+      ctx.graph.getNode(ctx.state.currentPageId)?.type !== 'CANVAS'
+    const nextPage = needsPage
+      ? (pages.find((page) => page.id === preferredPageId && page.id !== pageId) ??
+        pages[index + 1] ??
+        pages[index - 1])
+      : undefined
+
+    pageSwitchGeneration++
+    ctx.graph.deleteNode(pageId)
+    pageViewportStore.deletePageViewport(pageId)
+    if (nextPage) void switchPage(nextPage.id)
+    return true
+  }
+
+  function restorePage(pageId: string, index: number, snapshot: Map<string, SceneNode>): boolean {
+    const page = snapshot.get(pageId)
+    if (!page || ctx.graph.getNode(pageId)) return false
+
+    restoreSubtree(ctx.graph, page, ctx.graph.rootId, snapshot)
+    ctx.graph.insertChildAt(pageId, ctx.graph.rootId, index)
+    return true
+  }
+
   function addPage(name?: string) {
     const pages = ctx.graph.getPages()
     const pageName = name ?? `Page ${pages.length + 1}`
+    const previousPageId = ctx.state.currentPageId
     const page = ctx.graph.addPage(pageName)
     setDefaultPageBackground(ctx.graph, page, ctx.state.theme)
+    const pageIndex = ctx.graph.getNode(ctx.graph.rootId)?.childIds.indexOf(page.id) ?? pages.length
+    const snapshot = snapshotSubtree(ctx.graph, page.id)
+
+    ctx.undo.push({
+      label: 'Add page',
+      forward: () => {
+        if (restorePage(page.id, pageIndex, snapshot)) void switchPage(page.id)
+      },
+      inverse: () => {
+        removePage(page.id, previousPageId)
+      }
+    })
     void switchPage(page.id)
     return page.id
   }
 
   function deletePage(pageId: string) {
     const pages = ctx.graph.getPages()
-    if (pages.length <= 1) return
     const idx = pages.findIndex((p) => p.id === pageId)
-    ctx.graph.deleteNode(pageId)
-    pageViewportStore.deletePageViewport(pageId)
-    if (ctx.state.currentPageId === pageId) {
-      const newIdx = Math.min(idx, pages.length - 2)
-      const remaining = ctx.graph.getPages()
-      void switchPage(remaining[newIdx].id)
-    }
+    if (pages.length <= 1 || idx === -1) return
+
+    if (isReaderPagePending(ctx.graph, pageId)) recoverReaderPage(ctx.graph, pageId)
+    const snapshot = snapshotSubtree(ctx.graph, pageId)
+    const rootIndex = ctx.graph.getNode(ctx.graph.rootId)?.childIds.indexOf(pageId) ?? idx
+
+    if (!removePage(pageId)) return
+    ctx.undo.push({
+      label: 'Delete page',
+      forward: () => {
+        removePage(pageId)
+      },
+      inverse: () => {
+        if (!restorePage(pageId, rootIndex, snapshot)) return
+        if (ctx.state.currentPageId === pageId) {
+          pageSwitchGeneration++
+          syncPageColor()
+        } else if (ctx.graph.getNode(ctx.state.currentPageId)?.type !== 'CANVAS') {
+          void switchPage(pageId)
+        }
+      }
+    })
   }
 
   function movePage(pageId: string, index: number) {
     const pages = ctx.graph.getPages()
     const currentIndex = pages.findIndex((page) => page.id === pageId)
-    if (currentIndex === -1) return
+    if (currentIndex === -1 || ctx.graph.getNode(pageId)?.type !== 'CANVAS') return
 
     const nextIndex = Math.max(0, Math.min(index, pages.length - 1))
     if (nextIndex === currentIndex) return
 
-    ctx.graph.insertChildAt(pageId, ctx.graph.rootId, nextIndex)
+    const moveTo = (targetIndex: number) => {
+      const currentPages = ctx.graph.getPages()
+      const target = currentPages[Math.max(0, Math.min(targetIndex, currentPages.length - 1))]
+      const root = ctx.graph.getNode(ctx.graph.rootId)
+      if (!root) return
+      const rootIndex = root.childIds.indexOf(target.id)
+      if (rootIndex !== -1) ctx.graph.insertChildAt(pageId, ctx.graph.rootId, rootIndex)
+    }
+
+    moveTo(nextIndex)
+    ctx.undo.push({
+      label: 'Move page',
+      forward: () => moveTo(nextIndex),
+      inverse: () => moveTo(currentIndex)
+    })
   }
 
   function renamePage(pageId: string, name: string) {
+    const page = ctx.graph.getNode(pageId)
+    if (page?.type !== 'CANVAS' || page.name === name) return
+    const previousName = page.name
     ctx.graph.updateNode(pageId, { name })
+    const rename = (nextName: string) => {
+      if (ctx.graph.getNode(pageId)?.type === 'CANVAS') {
+        ctx.graph.updateNode(pageId, { name: nextName })
+      }
+    }
+    ctx.undo.push({
+      label: 'Rename page',
+      forward: () => rename(name),
+      inverse: () => rename(previousName)
+    })
   }
 
   function setPageColor(color: Color) {

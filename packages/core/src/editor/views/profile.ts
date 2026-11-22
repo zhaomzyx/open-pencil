@@ -92,19 +92,21 @@ const EDIT_BEHAVIOUR: ViewBehaviour = {
 }
 
 /** A preview runs the design: the canvas only pans, and its controls take the pointer. */
-function playBehaviour(revision: number): ViewBehaviour {
+function playBehaviour(live: NonNullable<EditorProfile['live']>): ViewBehaviour {
   return {
     pointer: 'pan',
     shortcuts: 'view',
     editChrome: false,
-    live: { revision },
+    live,
     panels: false,
     leaveTo: EDIT_VIEW
   }
 }
 
 function viewBehaviour(view: CanvasView): ViewBehaviour {
-  return view.id === 'play' ? playBehaviour(view.revision) : EDIT_BEHAVIOUR
+  if (view.id !== 'play') return EDIT_BEHAVIOUR
+  const { revision, player } = view
+  return playBehaviour(player ? { revision, player } : { revision })
 }
 
 /** The tools both offer; null offers every tool. */

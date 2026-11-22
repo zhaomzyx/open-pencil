@@ -4,6 +4,7 @@ import { SceneGraph, type CommentThread } from '@open-pencil/scene-graph'
 import {
   commentAnchor,
   commentPosition,
+  createCommentThread,
   readComments,
   writeComments
 } from '@open-pencil/scene-graph/comments'
@@ -67,6 +68,30 @@ describe('document comments', () => {
     expect(commentPosition(graph, pinned)).toEqual({ x: 415, y: 65 })
 
     expect(commentAnchor(graph, page.id, { x: 900, y: 900 }).nodeId).toBeNull()
+  })
+
+  test('a preview thread follows the picked child and falls back to its page position after deletion', () => {
+    const graph = new SceneGraph()
+    const [page] = graph.getPages()
+    const overlay = graph.createNode('FRAME', page.id, { x: 300, y: 100 })
+    const button = graph.createNode('FRAME', overlay.id, { name: 'Confirm', x: 10, y: 40 })
+    const options = {
+      pageId: page.id,
+      at: { x: 312, y: 145 },
+      sourceNodeId: button.id,
+      text: 'Change this label',
+      author: { name: 'Ada' },
+      now: '2026-11-21T08:00:00Z'
+    }
+    const thread = createCommentThread(graph, options)
+    writeComments(graph, [thread])
+    const [stored] = readComments(graph)
+    expect(stored).toMatchObject({ nodeId: button.id, nodeName: 'Confirm', offsetX: 2, offsetY: 5 })
+    graph.updateNode(button.id, { x: 20 })
+    expect(commentPosition(graph, stored)).toEqual({ x: 322, y: 145 })
+    graph.deleteNode(button.id)
+    expect(commentPosition(graph, stored)).toEqual(options.at)
+    expect(createCommentThread(graph, options).nodeId).toBeNull()
   })
 
   test('inside a section a pin follows the frame it is on, not the whole section', () => {

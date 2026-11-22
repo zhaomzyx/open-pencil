@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { templateRef } from '@vueuse/core'
 import {
   MenubarCheckboxItem,
   MenubarContent,
@@ -13,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarTrigger
 } from 'reka-ui'
-import { shallowRef, useTemplateRef, watch } from 'vue'
+import { shallowRef, useTemplateRef } from 'vue'
 import IconChevronRight from '~icons/lucide/chevron-right'
 
 import type { MenuEntry } from '@open-pencil/vue/editor/menu-model'
@@ -23,7 +22,6 @@ import { vTestId } from '@open-pencil/vue/testing'
 import { useEditorStore } from '@/app/editor/active-store'
 import { openSettingsDialog } from '@/app/settings/dialog'
 import { useAppMenu } from '@/app/shell/menu/app-menu'
-import { useDocumentNameRename } from '@/app/shell/menu/document-name'
 import {
   hasMenuSubItems,
   isMenuCheckbox,
@@ -41,6 +39,7 @@ import { animationsEnabled } from '@/app/shell/motion'
 import { resolvedAppTheme } from '@/app/shell/theme'
 import BrandMark from '@/components/brand/BrandMark.vue'
 import { CloudDocumentStatusHost, CloudReportButton } from '@/components/cloud/integration'
+import CollabPanel from '@/components/collab-panel/CollabPanel.vue'
 import IconButton from '@/components/ui/button/IconButton.vue'
 import { useScrollOverflow } from '@/components/ui/list/useScrollOverflow'
 import AppMenubarRoot from '@/components/ui/menu/AppMenubarRoot.vue'
@@ -49,23 +48,17 @@ import { useMenuUI } from '@/components/ui/menu/menu'
 import MenuScrollArea from '@/components/ui/menu/MenuScrollArea.vue'
 import { IS_TAURI } from '@/constants'
 
+const { showEditorControls } = defineProps<{ showEditorControls: boolean }>()
 const store = useEditorStore()
 
-const { rename, editingName, startRename, commitRename } = useDocumentNameRename(store)
-const nameInput = templateRef<HTMLInputElement>('nameInput')
-
-watch(nameInput, (input) => {
-  if (input) void rename.focusInput(input)
-})
-
-const { menu: t, settings } = useI18n()
+const { locale, menu: t, settings } = useI18n()
 
 const { topMenus } = useAppMenu()
 const menuCls = useMenuUI()
 const mainMenuCls = useMenuUI({ content: 'min-w-52' })
 const subMenuCls = useMenuUI({ content: 'min-w-44' })
 
-// A narrow panel clips the menubar; fade the clipped side and offer a chevron so it reads as scrollable.
+// A narrow window clips the menubar; fade the clipped side and offer a chevron so it reads as scrollable.
 const menubar = useTemplateRef<HTMLElement>('menubar')
 const { overflowStart, overflowEnd, scrollTowardHidden } = useScrollOverflow(menubar, {
   smooth: animationsEnabled
@@ -90,48 +83,22 @@ function runChosenAction() {
 </script>
 
 <template>
-  <div class="shrink-0 border-b border-border">
-    <div class="flex items-center gap-2 px-2 py-1.5">
+  <header
+    data-test-id="editor-workspace-menubar"
+    class="flex min-w-0 shrink-0 items-center gap-2 border-b border-border bg-panel px-2 py-1"
+  >
+    <div class="flex shrink-0 items-center gap-1.5">
       <BrandMark
         data-test-id="app-logo"
         variant="app-icon"
         :appearance="resolvedAppTheme"
         class="size-6"
       />
-      <input
-        v-if="editingName"
-        ref="nameInput"
-        data-test-id="app-document-name-input"
-        class="min-w-0 flex-1 rounded border border-accent bg-input px-1 py-0.5 text-xs text-surface outline-none"
-        :value="store.state.documentName"
-        @blur="commitRename($event)"
-        @keydown="rename.onKeydown"
-      />
-      <span
-        v-else
-        data-test-id="app-document-name"
-        class="min-w-0 flex-1 cursor-default truncate rounded px-1 py-0.5 text-xs text-surface hover:bg-hover"
-        @dblclick="startRename"
-        >{{ store.state.documentName }}</span
-      >
-      <CloudDocumentStatusHost />
-      <CloudReportButton />
-      <IconButton
-        :label="settings.title"
-        data-test-id="app-settings-trigger"
-        @click="openSettingsDialog()"
-      >
-        <icon-lucide-settings class="size-3.5" />
-      </IconButton>
-      <IconButton
-        :label="`${t.toggleUI} (${appMenuShortcutLabel('toggle-ui')})`"
-        data-test-id="app-toggle-ui"
-        @click="store.state.showUI = !store.state.showUI"
-      >
-        <icon-lucide-sidebar class="size-3.5" />
-      </IconButton>
+      <span class="text-xs font-semibold whitespace-nowrap text-surface">
+        {{ locale === 'zh-CN' ? '白盒工作台' : 'OpenPencil' }}
+      </span>
     </div>
-    <div v-if="!IS_TAURI" class="flex items-center px-1 pb-1">
+    <div v-if="showEditorControls && !IS_TAURI" class="flex min-w-0 items-center">
       <div
         ref="menubar"
         class="scrollbar-none min-w-0 flex-1 overflow-x-auto ltr:data-overflow-end:mask-r-from-[calc(100%-2rem)] ltr:data-overflow-start:mask-l-from-[calc(100%-2rem)] rtl:data-overflow-end:mask-l-from-[calc(100%-2rem)] rtl:data-overflow-start:mask-r-from-[calc(100%-2rem)]"
@@ -174,7 +141,7 @@ function runChosenAction() {
                                 v-else-if="isMenuCheckbox(sub)"
                                 :model-value="menuChecked(sub)"
                                 :class="menuCls.item"
-                                @update:model-value="updateMenuChecked(sub, $event as boolean)"
+                                @update:model-value="updateMenuChecked(sub, $event === true)"
                               >
                                 <span class="flex-1">{{ menuLabel(sub) }}</span>
                                 <MenubarItemIndicator class="text-surface">
@@ -201,7 +168,7 @@ function runChosenAction() {
                       v-else-if="isMenuCheckbox(item)"
                       :model-value="menuChecked(item)"
                       :class="menuCls.item"
-                      @update:model-value="updateMenuChecked(item, $event as boolean)"
+                      @update:model-value="updateMenuChecked(item, $event === true)"
                     >
                       <span class="flex-1">{{ menuLabel(item) }}</span>
                       <MenubarItemIndicator class="text-surface">
@@ -242,5 +209,28 @@ function runChosenAction() {
         <icon-lucide-chevron-left data-direction="reading" v-else class="size-3.5" />
       </button>
     </div>
-  </div>
+    <div v-if="showEditorControls" class="flex shrink-0 items-center border-s border-border ps-2">
+      <slot />
+    </div>
+    <div class="ms-auto flex shrink-0 items-center gap-0.5">
+      <CloudDocumentStatusHost v-if="showEditorControls" />
+      <CloudReportButton v-if="showEditorControls" />
+      <CollabPanel class="me-1" />
+      <IconButton
+        :label="settings.title"
+        data-test-id="app-settings-trigger"
+        @click="openSettingsDialog()"
+      >
+        <icon-lucide-settings class="size-3.5" />
+      </IconButton>
+      <IconButton
+        v-if="showEditorControls"
+        :label="`${t.toggleUI} (${appMenuShortcutLabel('toggle-ui')})`"
+        data-test-id="app-toggle-ui"
+        @click="store.state.showUI = !store.state.showUI"
+      >
+        <icon-lucide-sidebar class="size-3.5" />
+      </IconButton>
+    </div>
+  </header>
 </template>

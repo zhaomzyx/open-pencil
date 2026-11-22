@@ -2,10 +2,10 @@ import { focusStyles } from '@open-pencil/theme'
 
 const constraintsTheme = {
   slots: {
-    root: 'grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-1.5',
-    diagram: 'relative h-16 w-18 rounded border border-border bg-panel-field',
+    root: 'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-1.5',
+    diagram: 'relative h-16 w-22 rounded border border-border bg-panel-field',
     pin: [
-      'absolute flex cursor-pointer items-center justify-center rounded-sm border border-transparent bg-transparent text-muted hover:bg-hover hover:text-surface',
+      'pointer-events-auto absolute flex cursor-pointer items-center justify-center rounded-sm border border-transparent bg-transparent text-muted hover:bg-hover hover:text-surface',
       focusStyles.ring
     ],
     pinMark: 'block rounded-full bg-current',
@@ -36,8 +36,14 @@ const constraintsTheme = {
         pin: 'bottom-1 left-1/2 h-4 w-7 -translate-x-1/2',
         pinMark: 'h-0.5 w-5'
       },
-      horizontalCenter: { pin: 'top-5.25 inset-s-6.75 h-6 w-4', pinMark: 'h-4 w-0.5' },
-      verticalCenter: { pin: 'top-6.25 inset-s-8.25 h-4 w-6', pinMark: 'h-0.5 w-4' }
+      horizontalCenter: {
+        pin: 'inset-e-1/2 top-1/2 me-0.5 size-5 -translate-y-1/2',
+        pinMark: 'h-3.5 w-0.5'
+      },
+      verticalCenter: {
+        pin: 'inset-s-1/2 top-1/2 ms-0.5 size-5 -translate-y-1/2',
+        pinMark: 'h-0.5 w-3.5'
+      }
     }
   },
   defaultVariants: {

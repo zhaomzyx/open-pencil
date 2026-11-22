@@ -59,6 +59,15 @@ function showsPixelGrid(profile: EditorProfile, state: EditorState): boolean {
   return profile.editChrome && profile.pixelGrid && state.showPixelGrid !== false
 }
 
+function playOverlays(profile: EditorProfile, graph: SceneGraph, pageId: string) {
+  const { live } = profile
+  return {
+    playing: !profile.editChrome,
+    prototypeStage: !!live?.player,
+    playIslands: live && !live.player ? new Set(playIslandRoots(graph, pageId)) : undefined
+  }
+}
+
 export function renderFromEditorState(
   r: SkiaRenderer,
   state: EditorState,
@@ -103,7 +112,7 @@ export function renderFromEditorState(
   r.navigationPhase = state.navigation.phase
   r.navigationGeneration = state.navigation.generation
   const profile = resolveEditorProfile(state)
-  const { editChrome, live, edits } = profile
+  const { editChrome, edits } = profile
   r.pageDotGrid = profile.dotGrid
   r.sectionTitles = profile.sectionTitles
   r.editHandles = edits && profile.layerEdits === 'all'
@@ -112,8 +121,7 @@ export function renderFromEditorState(
     graph,
     editChrome ? state.selectedIds : new Set<string>(),
     {
-      playing: !editChrome,
-      playIslands: live ? new Set(playIslandRoots(graph, state.currentPageId)) : undefined,
+      ...playOverlays(profile, graph, state.currentPageId),
       hoveredNodeId: editChrome ? state.hoveredNodeId : null,
       showPixelGrid: showsPixelGrid(profile, state),
       showSizeLabels: state.showSizeLabels,
@@ -410,7 +418,7 @@ function renderPageChildren(
   graph: SceneGraph,
   overlays: RenderOverlays
 ): void {
-  if (renderPageWithPreviews(r, canvas, graph, overlays)) return
+  if (overlays.prototypeStage || renderPageWithPreviews(r, canvas, graph, overlays)) return
   const pageNode = graph.getNode(r.pageId ?? graph.rootId)
   if (!pageNode) return
   for (const childId of pageNode.childIds) {

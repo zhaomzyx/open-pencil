@@ -254,6 +254,7 @@ openpencil settings set editing.snapping.pixelGrid false
 
 ```bash
 openpencil tool list
+openpencil tool call get_prototype design.fig --args '{"id":"0:5"}' --json  # ordered click actions and references
 openpencil tool describe set_fill                      # JSON Schema for the arguments
 openpencil tool call set_fill --document-id tab-123 --args '{"id":"0:5","color":"#2563eb"}'
 openpencil tool call create_page design.fig --args '{"name":"Icons"}' --write   # headless

@@ -20,12 +20,13 @@ import { createIslandState, instanceStates } from './state'
  * root, with each control running as its Reka UI component. The design's variants draw the
  * controls' states; the document never changes.
  */
-const { rootId, revision, tokens } = defineProps<{
+const { rootId, revision, tokens, numbers } = defineProps<{
   rootId: string
   /** Changing it starts every control again as designed. */
   revision: number
   /** The document's variables as custom properties, shared by every island of the canvas. */
   tokens: CSSStyleSheet
+  numbers?: Record<string, number>
 }>()
 const editor = useEditor()
 
@@ -54,7 +55,18 @@ function Layers() {
   const { graph, root } = projection.value
   return root
     ? renderNode(
-        { graph, rootId, controls: controls.value, roles: roles.value, state: state.value },
+        {
+          graph,
+          rootId,
+          controls: controls.value,
+          roles: roles.value,
+          state: state.value,
+          prototype: numbers && {
+            source: editor.graph,
+            numbers,
+            activate: editor.activatePlaySource
+          }
+        },
         root,
         ''
       )

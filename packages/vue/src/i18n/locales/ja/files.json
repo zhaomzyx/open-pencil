@@ -45,7 +45,7 @@
   "recentFiles": "最近使用したファイル",
   "recentFilesDescription": "デザインの作業を続けるか、新しく始めます。",
   "noRecentFiles": "最近使用したファイルはありません",
-  "noRecentFilesDescription": "デスクトップアプリで開いたファイルがここに表示されます。",
+  "noRecentFilesDescription": "開いたファイルはここからもう一度開けます。",
   "noRecentDesigns": "最近のデザインはありません",
   "noRecentBoards": "最近のボードはありません",
   "searchFiles": "ファイルを検索…",

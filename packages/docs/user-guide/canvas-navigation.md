@@ -13,8 +13,7 @@ Move the visible area of the canvas without affecting any objects.
 
 - <kbd>Space</kbd> + drag — hold Space and drag anywhere on the canvas
 - **Middle mouse drag** — press and drag the middle mouse button
-- **Two-finger trackpad** — swipe with two fingers on a trackpad
-- <kbd>Shift</kbd> + mouse wheel — pan horizontally
+- **Horizontal trackpad swipe** — pan the canvas with a two-finger swipe across the trackpad
 
 ## Hand Tool
 
@@ -25,6 +24,8 @@ Press <kbd>H</kbd> to activate the hand tool for continuous panning. Any drag on
 Zoom in and out centered on your cursor position.
 
 - <kbd>Ctrl</kbd> + scroll (or <kbd>⌘</kbd> + scroll on Mac) — scroll up to zoom in, scroll down to zoom out
+- **Mouse wheel** — scroll up or down for continuous zoom
+- <kbd>Shift</kbd> + mouse wheel — step through fixed levels such as 50%, 66.6%, and 75%
 - **Pinch gesture** — pinch on a trackpad to zoom in/out
 - **Keyboard shortcuts** — see table below
 

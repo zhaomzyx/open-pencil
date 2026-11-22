@@ -14,6 +14,7 @@
   "openChat": "打开 AI 聊天",
   "closeChat": "关闭 AI 聊天",
   "previewing": "预览中",
+  "showInteractions": "交互提示",
   "resetPreview": "重置",
   "leavePreview": "退出预览 ({shortcut})",
   "startPreview": "预览 ({shortcut})"

@@ -19,6 +19,7 @@
   "vectorizeCredentialFailed": "{error}. Обновите ключ в Настройки → Сервисы изображений.",
   "vectorizeFailed": "{provider} не смог векторизовать это изображение: {error}",
   "operationFailed": "Не удалось выполнить операцию: {error}",
+  "pageKeptForUnsavedChanges": "Страница осталась открытой. Сохраните изменения в {names} перед обновлением или выходом.",
   "storageConnected": "Подключено. Пространство хранилища готово.",
   "storageConnectionFailed": "Не удалось подключиться к хранилищу: {error}",
   "nodeID": "ID узла",

@@ -93,6 +93,34 @@ test('a web page opens as layers with the stylesheet and pictures it links', asy
   })
 })
 
+test('a linked design reopens from Recents after closing and reloading without its source', async ({
+  page
+}) => {
+  test.setTimeout(45_000)
+  const address = `${SITE}/design.fig`
+  const archive = await readFile(join(FIXTURES, 'slots.fig'))
+  await page.route(address, (route) =>
+    route.fulfill({
+      headers: { ...OPEN, 'content-type': 'application/octet-stream' },
+      body: archive
+    })
+  )
+  await page.goto('/')
+  await page.getByTestId('home-new-design').click()
+  const dialog = await openFromURL(page, address)
+  await expect(dialog).toHaveCount(0)
+  const layers = page.getByTestId('layers-item')
+  await expect(layers.first()).toBeVisible()
+  const contents = await layers.allTextContents()
+  await page.getByTestId('tabbar-close').last().click()
+  const recent = page.getByTestId('recent-files-home').getByText('design.fig', { exact: true })
+  await expect(recent).toBeVisible()
+  await page.route(address, (route) => route.abort())
+  await page.reload()
+  await recent.click()
+  await expect(layers).toHaveText(contents)
+})
+
 test('an address that holds a picture opens it in a new design', async ({ page }) => {
   const png = await readFile(join(FIXTURES, 'absolute-constraint-figma.png'))
   await page.route(`${SITE}/**`, (route) =>

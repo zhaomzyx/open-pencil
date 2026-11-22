@@ -1,19 +1,26 @@
 import { watch } from 'vue'
 
+import { isAbortError } from '@open-pencil/std/errors'
 import { useDocumentWorkspace } from '@open-pencil/vue/document/workspace'
 
+import { requestBrowserFileRead } from '@/app/document/io/capability'
 import {
   createStorageAdapter,
   sameStorageLocation,
   storageLocationOf,
   type StorageDocument
 } from '@/app/integrations/storage'
-import { openFileFromPath } from '@/app/shell/menu/use'
+import { openDesignFile, openFileFromPath } from '@/app/shell/menu/files'
 import { activeStorageLocation, createStorageWorkspaceSource } from '@/app/storage/workspace/source'
 import { openStorageDocumentInNewTab } from '@/app/tabs'
 
-import { forgetRecentDocument, recentFiles, type RecentDocument } from './store'
-import { loadRecentFileThumbnail } from './thumbnails'
+import {
+  forgetRecentDocument,
+  recentBrowserFileSource,
+  recentFiles,
+  type RecentDocument
+} from './store'
+import { loadRecentBrowserThumbnail, loadRecentFileThumbnail } from './thumbnails'
 
 /** The recent files with their previews, as Home and a New file tab list them. */
 export function useRecentFilesWorkspace() {
@@ -22,10 +29,14 @@ export function useRecentFilesWorkspace() {
       async refresh() {
         return recentFiles.value
       },
-      loadPreview(documentId) {
+      async loadPreview(documentId) {
         const document = recentFiles.value.find((candidate) => candidate.id === documentId)
-        if (!document) return Promise.resolve(null)
+        if (!document) return null
         if (document.kind === 'local') return loadRecentFileThumbnail(document.path)
+        if (document.kind === 'browser') {
+          const source = await recentBrowserFileSource(document.id).catch(() => undefined)
+          return loadRecentBrowserThumbnail(document.id, source)
+        }
         return createStorageWorkspaceSource(
           () => undefined,
           () => storageLocationOf(document)
@@ -52,23 +63,44 @@ export function matchingRecentFiles(
   locale: string
 ): readonly RecentDocument[] {
   if (!query) return documents
-  return documents.filter((document) =>
-    `${document.name}\n${document.kind === 'local' ? document.path : document.documentId}`
-      .toLocaleLowerCase(locale)
-      .includes(query)
-  )
+  return documents.filter((document) => {
+    if (document.name.toLocaleLowerCase(locale).includes(query)) return true
+    if (document.kind === 'local') return document.path.toLocaleLowerCase(locale).includes(query)
+    if (document.kind === 'storage') {
+      return document.documentId.toLocaleLowerCase(locale).includes(query)
+    }
+    return false
+  })
 }
 
 /**
  * Opens a recent file. A stored one opens with the revision its storage lists, so a stale copy on
  * this device is not taken for current: `listed` is the active storage's listing when the caller
- * has it, and other places are listed here; offline, the copy opens as it is. A file that cannot
- * open is forgotten, and its error thrown.
+ * has it, and other places are listed here; offline, the copy opens as it is.
  */
 export async function openRecentDocument(
   document: RecentDocument,
   listed?: readonly StorageDocument[]
 ): Promise<void> {
+  if (document.kind === 'browser') {
+    try {
+      const source = await recentBrowserFileSource(document.id)
+      if (!source) throw new DOMException('Choose this file again to reopen it.', 'NotFoundError')
+      if (source instanceof File) {
+        await openDesignFile(source)
+      } else {
+        await requestBrowserFileRead(source)
+        await openDesignFile(await source.getFile(), source)
+      }
+    } catch (error) {
+      if (isAbortError(error)) return
+      if (error instanceof DOMException && error.name === 'NotFoundError') {
+        forgetRecentDocument(document.id)
+      }
+      throw error
+    }
+    return
+  }
   try {
     if (document.kind === 'local') {
       await openFileFromPath(document.path)

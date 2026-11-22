@@ -19,6 +19,7 @@
   "vectorizeCredentialFailed": "{error}. Actualízala en Ajustes → Servicios de imagen.",
   "vectorizeFailed": "{provider} no pudo vectorizar esta imagen: {error}",
   "operationFailed": "La operación falló: {error}",
+  "pageKeptForUnsavedChanges": "La página sigue abierta. Guarda los cambios en {names} antes de recargar o salir.",
   "storageConnected": "Conectado. El espacio de almacenamiento está listo.",
   "storageConnectionFailed": "No se pudo conectar al almacenamiento: {error}",
   "nodeID": "ID de nodo",

@@ -1,3 +1,4 @@
+import { omit } from 'es-toolkit'
 import { h, type VNode } from 'vue'
 
 import {
@@ -13,6 +14,7 @@ import { shaderOfPaint } from '@open-pencil/scene-graph/shaders'
 
 import { wrapRole } from './controls'
 import IslandShader from './IslandShader.vue'
+import { prototypeLayer, type IslandPrototype } from './prototype'
 import type { IslandState } from './state'
 
 export interface IslandRenderContext {
@@ -22,6 +24,7 @@ export interface IslandRenderContext {
   controls: ReadonlyMap<string, ControlModel>
   roles: ReadonlyMap<string, ControlRole>
   state: IslandState
+  prototype?: IslandPrototype
 }
 
 /** How a role's wrapper changes the element it wraps. */
@@ -57,16 +60,32 @@ export function renderElement(
 ): VNode {
   // Omitted properties are removed, not cleared: a Reka part that renders through this element
   // sets them, and an `undefined` here would override it.
-  const omitted = new Set(override.omit)
-  const style = Object.fromEntries(
-    Object.entries({
-      ...(override.tag === 'button' ? BUTTON_RESET : {}),
-      ...element.inlineStyle,
-      ...override.style
-    }).filter(([key]) => !omitted.has(key))
-  )
+  const style: Record<string, string | undefined> = {}
+  if (override.tag === 'button') Object.assign(style, BUTTON_RESET)
+  Object.assign(style, element.inlineStyle)
+  if (context.prototype && element.sourceSceneNodeId === context.rootId) {
+    style.position = 'relative'
+    style.inset = 'auto'
+  }
+  Object.assign(style, override.style)
+  const tag = override.tag ?? element.tagName
+  const control = !!element.sourceSceneNodeId && context.roles.has(path)
+  const layer =
+    context.prototype && element.sourceSceneNodeId
+      ? prototypeLayer(
+          context.prototype,
+          context.rootId,
+          element.sourceSceneNodeId,
+          path,
+          control || tag === 'a'
+        )
+      : undefined
   const content =
-    override.children ?? (() => element.children.map((child) => renderNode(context, child, path)))
+    override.children ??
+    (() =>
+      layer?.text !== undefined
+        ? [layer.text]
+        : element.children.map((child) => renderNode(context, child, path)))
   // A shader fill plays behind the content, whatever draws the content, from the canvas's own
   // player for the image its paint shows.
   const image = element.shader ? shaderImage(element) : undefined
@@ -77,10 +96,18 @@ export function renderElement(
     ...content()
   ]
   const { 'data-open-pencil-node-id': _id, ...attrs } = element.attrs
-  const tag = override.tag ?? element.tagName
   return h(
     tag,
-    { ...attrs, ...linkProps(tag), key: path, 'data-layer': path, style, ...override.props },
+    {
+      ...attrs,
+      ...linkProps(tag),
+      key: path,
+      'data-layer': path,
+      'data-island-control': context.prototype && control ? '' : undefined,
+      style: override.omit ? omit(style, override.omit) : style,
+      ...layer?.props,
+      ...override.props
+    },
     children()
   )
 }

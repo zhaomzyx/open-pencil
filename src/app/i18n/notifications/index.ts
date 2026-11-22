@@ -44,6 +44,9 @@ export const notificationMessageDefaults = {
   vectorizeFailed: params('{provider} could not vectorize this image: {error}'),
   savingDocument: 'Saving document…',
   operationFailed: params('Operation failed: {error}'),
+  pageKeptForUnsavedChanges: params(
+    'This page stayed open. Save the changes in {names} before refreshing or leaving.'
+  ),
   saveFailedRetry: 'Retry save',
   autosaveFailed: params('Could not save “{name}”: {error}'),
   saveFailedTitle: params('Could not save “{name}”'),

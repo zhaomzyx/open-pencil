@@ -85,7 +85,9 @@ export const useComments = createGlobalState(() => {
     const store = storeRef.value
     return store ? commentsKeptElsewhere.value.get(store) : undefined
   })
-  const canComment = computed(() => kept.value?.canComment ?? true)
+  const canComment = computed(
+    () => kept.value?.canComment ?? !storeRef.value?.state.hostRestrictions.readOnly
+  )
 
   /** Whether someone else wrote in the thread since this account read it, where a server keeps. */
   function isUnread(threadId: string): boolean {
@@ -118,7 +120,14 @@ export const useComments = createGlobalState(() => {
 
   function toggleThread(threadId: string) {
     draft.value = null
-    activeThreadId.value = activeThreadId.value === threadId ? null : threadId
+    if (activeThreadId.value === threadId) {
+      activeThreadId.value = null
+      return
+    }
+    const store = documentComments.store()
+    const thread = threads.value.find((entry) => entry.id === threadId)
+    if (thread?.nodeId && store?.graph.getNode(thread.nodeId)) store.select([thread.nodeId])
+    activeThreadId.value = threadId
   }
 
   /** Close an unsent comment or an open thread; false when neither was open. */
@@ -130,13 +139,17 @@ export const useComments = createGlobalState(() => {
   }
 
   function addThread(text: string) {
-    const place = draft.value
+    return draft.value ? postThread(text, draft.value) : undefined
+  }
+
+  function postThread(text: string, place: PagePoint, sourceNodeId?: string) {
     const body = text.trim()
     const store = documentComments.store()
-    if (!store || !place || !body || !canComment.value) return
+    if (!store || !body || !canComment.value) return undefined
     const thread = createCommentThread(store.graph, {
       pageId: place.pageId,
       at: place,
+      sourceNodeId,
       author: me.value,
       text: body,
       now: now()
@@ -144,6 +157,7 @@ export const useComments = createGlobalState(() => {
     draft.value = null
     activeThreadId.value = thread.id
     mutate((current) => [...current, thread])
+    return thread.id
   }
 
   /** A dragged pin lands on whatever is under it now, as in Figma. */
@@ -190,9 +204,15 @@ export const useComments = createGlobalState(() => {
     const store = documentComments.store()
     const thread = threads.value.find((entry) => entry.id === threadId)
     if (!store || !thread) return
-    if (store.state.currentPageId !== thread.pageId && store.graph.getNode(thread.pageId)) {
-      await store.switchPage(thread.pageId)
+    store.stopPlay()
+    const pageId = (thread.nodeId ? store.graph.pageOf(thread.nodeId) : null) ?? thread.pageId
+    if (store.state.currentPageId !== pageId && store.graph.getNode(pageId)) {
+      await store.switchPage(pageId)
+      if (documentComments.store() !== store || store.state.currentPageId !== pageId) return
     }
+    if (!showOnCanvas.value) store.setTool('COMMENT')
+    if (thread.nodeId && store.graph.getNode(thread.nodeId)) store.select([thread.nodeId])
+    else store.clearSelection()
     const { x, y } = pinPosition(thread)
     store.centerOn(x, y)
     draft.value = null
@@ -224,6 +244,7 @@ export const useComments = createGlobalState(() => {
     toggleThread,
     closeCard,
     addThread,
+    postThread,
     movePin,
     reply,
     setResolved,

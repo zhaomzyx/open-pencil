@@ -1,4 +1,5 @@
 {
+  "prototypeInteraction": "Interazione del prototipo",
   "copyJSXReference": "Copia il riferimento alle props JSX negli appunti",
   "jsxUpToDate": "Aggiornato",
   "source": "Sorgente del codice",

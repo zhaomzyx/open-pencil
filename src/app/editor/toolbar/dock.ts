@@ -16,8 +16,7 @@ export interface ToolbarDock {
   align: ToolbarAlign
 }
 
-/** Figma's place for it: centered along the bottom edge. */
-export const DEFAULT_TOOLBAR_DOCK: Readonly<ToolbarDock> = { side: 'bottom', align: 'center' }
+export const DEFAULT_TOOLBAR_DOCK: Readonly<ToolbarDock> = { side: 'left', align: 'center' }
 
 export function isToolbarSide(value: unknown): value is ToolbarSide {
   return TOOLBAR_SIDES.some((side) => side === value)
@@ -45,8 +44,11 @@ export function toolbarChrome(side: ToolbarSide | null): ViewportInsets {
  * first view leave room at its edge, and overlays, which avoid its box as of the last render,
  * redraw once it moves. Without the toolbar, as in a preview, nothing floats over the canvas.
  */
-export function useToolbarCanvasRoom(store: EditorStore, dock: MaybeRefOrGetter<ToolbarDock>) {
-  watchEffect(() => store.setViewportChrome(toolbarChrome(toValue(dock).side)))
+export function useToolbarCanvasRoom(
+  store: EditorStore,
+  dock: MaybeRefOrGetter<ToolbarDock | null>
+) {
+  watchEffect(() => store.setViewportChrome(toolbarChrome(toValue(dock)?.side ?? null)))
   onScopeDispose(() => store.setViewportChrome(toolbarChrome(null)))
   watch(
     () => toValue(dock),

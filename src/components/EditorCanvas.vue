@@ -35,11 +35,13 @@ import { useEditorStore } from '@/app/editor/active-store'
 import { useCanvasCollaborationAwareness } from '@/app/editor/canvas/collaboration-awareness'
 import { createCanvasContextSelection } from '@/app/editor/canvas/context-selection'
 import { canvasOverlayObstacles } from '@/app/editor/canvas/obstacles'
+import { usePlayHotspotHints } from '@/app/editor/play-hotspot-hints'
 import { useFollowView } from '@/app/presence/follow-view'
 import { appRuntimeConfig } from '@/app/runtime/config'
 import { appPreferences } from '@/app/settings/preferences/store'
 import CanvasEyedropperLoupe from '@/components/canvas/CanvasEyedropperLoupe.vue'
 import CommentsLayer from '@/components/comments/CommentsLayer.vue'
+import PrototypeComment from '@/components/comments/PrototypeComment.vue'
 import IssueMarkerTooltip from '@/components/design-check/IssueMarkerTooltip.vue'
 import SelectionToolbar from '@/components/figjam/SelectionToolbar.vue'
 import PreparationOverlay from '@/components/preparation/canvas/PreparationOverlay.vue'
@@ -55,6 +57,7 @@ import { floatingSurface } from '@/theme/overlay'
 import CanvasMenu from './canvas/CanvasMenu.vue'
 import CanvasLabelEditor from './canvas/labels/CanvasLabelEditor.vue'
 import { canvasLabelPresentation } from './canvas/labels/presentation'
+import PrototypeConnector from './canvas/PrototypeConnector.vue'
 import NumberField from './inputs/NumberField.vue'
 
 const { paneId } = defineProps<{
@@ -66,7 +69,8 @@ const sceneCanvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 const isActivePane = computed(() => !paneId || store.activePaneId.value === paneId)
-const followView = useFollowView(useTemplateRef<HTMLElement>('area'))
+const area = useTemplateRef<HTMLElement>('area')
+const followView = useFollowView(area)
 
 function activatePane() {
   if (paneId) store.setActivePane(paneId)
@@ -80,6 +84,8 @@ const getRenderState = paneId ? () => store.getPaneRenderState(paneId) : undefin
 /** This pane's view: its pan, zoom, page, and whether it previews. */
 const paneView = computed(() => (paneId ? store.getPaneRenderState(paneId) : store.state))
 const paneProfile = computed(() => resolveEditorProfile(paneView.value))
+const playHotspotHints = usePlayHotspotHints()
+const hotspotHint = computed(() => playHotspotHints.hint(paneId))
 const onViewportResize = (width: number, height: number) => {
   if (paneId) store.resizePane(paneId, width, height)
   if (isActivePane.value) store.setViewportSize(width, height)
@@ -175,7 +181,8 @@ const {
   updatePaneCursor,
   activatePane,
   () => isActivePane.value,
-  () => appPreferences.value.navigation.zoomSpeed
+  () => appPreferences.value.navigation.zoomSpeed,
+  'zoom'
 )
 
 watch(isActivePane, (active) => {
@@ -331,7 +338,24 @@ const cursor = computed(() =>
           :style="{ cursor }"
           class="absolute inset-0 block size-full touch-none outline-none"
         />
-        <PlayIslands :view="paneView" :drawn="drawnView" :canvas="canvasRef" />
+        <PlayIslands
+          :view="paneView"
+          :drawn="drawnView"
+          :canvas="canvasRef"
+          :hotspot-hint="hotspotHint"
+        />
+        <PrototypeConnector
+          v-if="
+            propertiesTab === 'prototype' &&
+            isActivePane &&
+            paneProfile.edits &&
+            paneProfile.layerEdits === 'all' &&
+            !paneProfile.live &&
+            store.state.showUI
+          "
+          :canvas="canvasRef"
+          :view="overlayView"
+        />
         <AppDropOverlay :visible="isDraggingOver" />
         <IssueMarkerTooltip :marker="hoveredIssueMarker" :canvas="canvasRef" />
         <CanvasEyedropperLoupe :loupe="eyedropperLoupe" />
@@ -396,7 +420,13 @@ const cursor = computed(() =>
           :followed="followView.label.value"
           @stop="followView.stop"
         />
-        <CommentsLayer v-if="isActivePane" :canvas-el="canvasRef" :drawn="drawnView" />
+        <PrototypeComment
+          v-if="paneProfile.live?.player"
+          :key="paneProfile.live.player.overlays.at(-1) ?? paneProfile.live.player.screenId"
+          :root-id="paneProfile.live.player.overlays.at(-1) ?? paneProfile.live.player.screenId"
+          :area="area"
+        />
+        <CommentsLayer v-else-if="isActivePane" :canvas-el="canvasRef" :drawn="drawnView" />
         <PreparationOverlay
           v-if="store.state.preparation && store.state.preparation.kind !== 'font-retry'"
           :preparation="store.state.preparation"

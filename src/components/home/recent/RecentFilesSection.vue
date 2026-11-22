@@ -7,6 +7,7 @@ import { useI18n } from '@open-pencil/vue/i18n'
 import { useDateFormat } from '@/app/i18n/date'
 import { forgetRecentDocument, recentDocumentKind, type RecentDocument } from '@/app/recent-files'
 import type { RecentFilesWorkspace } from '@/app/recent-files/workspace'
+import { isTauri } from '@/app/tauri/env'
 import DocumentEntry from '@/components/home/document/DocumentEntry.vue'
 import type { DocumentKindFilter } from '@/components/home/document/filter'
 import AppSelect from '@/components/ui/select/AppSelect.vue'
@@ -32,6 +33,7 @@ const dates = useDateFormat()
 const previewURL = workspace.previewURL
 const vWorkspacePreview = workspace.previewDirective
 const hasRecentFiles = computed(() => workspace.documents.value.length > 0)
+const desktop = isTauri()
 
 /** As Figma's Recents: a file leaves the list from its own menu; nothing clears all of it. */
 function recentMenu(document: RecentDocument) {
@@ -118,7 +120,7 @@ function formattedDate(updatedAt: string): string {
       class="rounded-lg border border-dashed border-border px-4 py-4 text-center sm:py-6"
     >
       <p class="text-xs font-medium">{{ files.noRecentFiles }}</p>
-      <p class="mt-1 text-xs text-muted">{{ files.noRecentFilesDescription }}</p>
+      <p v-if="desktop" class="mt-1 text-xs text-muted">{{ files.noRecentFilesDescription }}</p>
     </div>
 
     <!-- Recent files are all of another kind than the filter shows. -->

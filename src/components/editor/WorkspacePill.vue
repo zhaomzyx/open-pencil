@@ -22,14 +22,25 @@ const {
   shortcut: string
   /** Whether the AI chat floats over the canvas, which the pill opens and closes. */
   chatOpen?: boolean
+  canGoBack?: boolean
 }>()
-const emit = defineEmits<{ showUi: []; toggleChat: []; reset: []; leave: [] }>()
-const { editor } = useI18n()
+const emit = defineEmits<{
+  showUi: []
+  toggleChat: []
+  showInteractions: []
+  back: []
+  reset: []
+  leave: []
+}>()
+const { editor, common } = useI18n()
 </script>
 
 <template>
   <div
-    class="absolute top-7 inset-s-7 z-10 flex items-center gap-2 rounded-lg border border-border bg-panel px-2 py-1 shadow-sm"
+    class="z-10 flex shrink-0 items-center gap-2 rounded-lg border border-border bg-panel px-2 py-1 shadow-sm"
+    :class="
+      mode === 'collapsed' ? 'pointer-events-auto ms-7 mt-7 self-start' : 'absolute inset-s-7 top-7'
+    "
     :data-mode="mode"
   >
     <BrandMark variant="app-icon" :appearance="resolvedAppTheme" class="size-6" />
@@ -60,6 +71,24 @@ const { editor } = useI18n()
         <icon-lucide-play class="size-3" />
         {{ editor.previewing }}
       </span>
+      <AppButton
+        size="xs"
+        variant="soft"
+        class="shrink-0"
+        data-property="preview-interactions"
+        @click="emit('showInteractions')"
+      >
+        <icon-lucide-mouse-pointer-click class="size-3" />
+        {{ editor.showInteractions }}
+      </AppButton>
+      <IconButton
+        v-if="canGoBack"
+        :label="common.back"
+        data-property="preview-back"
+        @click="emit('back')"
+      >
+        <icon-lucide-arrow-left data-direction="reading" class="size-3.5" />
+      </IconButton>
       <AppButton size="xs" variant="soft" data-property="preview-reset" @click="emit('reset')">
         <icon-lucide-rotate-ccw class="size-3" />
         {{ editor.resetPreview }}

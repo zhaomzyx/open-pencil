@@ -20,6 +20,9 @@ const target = computed(() => {
 <template>
   <button
     data-test-id="cloud-share-button"
+    data-icon-only
+    type="button"
+    :aria-label="collaboration.share"
     :class="shareButton({ connection: 'idle' })"
     :disabled="!target"
     @click="cloudShareOpen = true"

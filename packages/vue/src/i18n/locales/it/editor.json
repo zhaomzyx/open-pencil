@@ -14,6 +14,7 @@
   "openChat": "Apri chat IA",
   "closeChat": "Chiudi chat IA",
   "previewing": "Anteprima",
+  "showInteractions": "Mostra interazioni",
   "resetPreview": "Ripristina",
   "leavePreview": "Esci dall’anteprima ({shortcut})",
   "startPreview": "Anteprima ({shortcut})"

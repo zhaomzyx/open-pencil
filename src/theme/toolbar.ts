@@ -69,7 +69,7 @@ const toolbarTheme = {
     },
     active: {
       true: {
-        button: 'bg-accent text-on-accent'
+        button: 'bg-surface/12 text-surface'
       },
       false: {}
     },
@@ -83,6 +83,16 @@ const toolbarTheme = {
         flyoutTrigger: 'rounded-lg hover:bg-hover hover:text-surface'
       }
     },
+    inRail: {
+      true: {
+        flyoutGroup: 'relative self-center',
+        flyoutTrigger:
+          'absolute inset-e-0 bottom-0 size-3.5 items-end justify-end rounded-sm pe-0.5 pb-0.5',
+        flyoutTriggerIcon:
+          'size-1.5 bg-current [clip-path:polygon(100%_0,100%_100%,0_100%)] rtl:-scale-x-100'
+      },
+      false: {}
+    },
     disabled: {
       true: {
         navigationAction: 'pointer-events-none'
@@ -91,6 +101,14 @@ const toolbarTheme = {
     }
   },
   compoundVariants: [
+    {
+      inRail: true,
+      active: true,
+      class: {
+        flyoutTrigger:
+          'text-surface/70 hover:bg-surface/10 hover:text-surface data-[state=open]:bg-surface/10 data-[state=open]:text-surface'
+      }
+    },
     {
       active: false,
       mobile: true,

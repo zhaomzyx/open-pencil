@@ -489,7 +489,7 @@ export function sceneNodeToKiwi(
   options: SceneNodeToKiwiOptions = {}
 ): KiwiNodeChange[] {
   const {
-    nodeIdToGuid,
+    nodeIdToGuid = new Map<string, GUID>(),
     fontDigestMap,
     varIdToGuid,
     glyphBlobMap = new Map<string, number>(),
