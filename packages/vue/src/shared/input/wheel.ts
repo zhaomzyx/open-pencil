@@ -125,7 +125,7 @@ function zoomStep(delta: number, perDelta: number): WheelStep {
 
 /**
  * Turns wheel events into pan and zoom steps. It keeps the last Windows notch so a fast spin
- * accelerates, so each canvas uses its own. `zoomSpeed` multiplies how far each event zooms.
+ * accelerates, so each canvas uses its own. `zoomSpeed` scales modifier zoom.
  */
 export function createWheelSteps(
   platform: WheelPlatform = currentWheelPlatform(),
@@ -156,17 +156,20 @@ export function createWheelSteps(
   return function wheelStep(event: WheelInput): WheelStep {
     const modifiedZoom = isWheelZoom(event)
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-    if (mode === 'zoom' && !modifiedZoom && event.shiftKey) {
-      // Chromium can report Shift+wheel as horizontal, so use the dominant axis.
-      const delta = horizontal ? event.deltaX : event.deltaY
-      if (delta !== 0) return { kind: 'fixed-zoom', direction: delta < 0 ? 1 : -1 }
+    if (mode === 'zoom' && !modifiedZoom) {
+      if (event.shiftKey) {
+        // Chromium can report Shift+wheel as horizontal, so use the dominant axis.
+        const delta = horizontal ? event.deltaX : event.deltaY
+        if (delta !== 0) return { kind: 'fixed-zoom', direction: delta < 0 ? 1 : -1 }
+      } else if (!horizontal && event.deltaY !== 0) {
+        return { kind: 'zoom', scale: event.deltaY < 0 ? 1.1 : 0.9 }
+      }
     }
 
-    const zoom = modifiedZoom || (mode === 'zoom' && !horizontal && event.deltaY !== 0)
     const notches = platform === 'windows' ? windowsNotches(event) : null
-    const delta = notches ? notchStep(event, notches, zoom) : normalizedWheelDelta(event)
+    const delta = notches ? notchStep(event, notches, modifiedZoom) : normalizedWheelDelta(event)
 
-    if (zoom) {
+    if (modifiedZoom) {
       const perDelta = event.ctrlKey && !notches ? PINCH_ZOOM_PER_DELTA : WHEEL_ZOOM_PER_DELTA
       return zoomStep(delta.dy, perDelta * zoomSpeed())
     }
@@ -183,8 +186,8 @@ export function createWheelSteps(
 const NAVIGATION_SETTLE_DELAY_MS = 120
 
 /**
- * Wheel and pinch zoom on the canvas. `zoomSpeed` scales how far each event zooms: 1 keeps
- * Figma's rate, 0.5 zooms half as far.
+ * Wheel and pinch zoom on the canvas. `zoomSpeed` scales modifier zoom: 1 keeps Figma's rate,
+ * 0.5 zooms half as far.
  */
 export function setupWheelPanZoom(
   canvasRef: Ref<HTMLCanvasElement | null>,

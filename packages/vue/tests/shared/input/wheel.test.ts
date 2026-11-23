@@ -118,15 +118,16 @@ describe('wheel steps', () => {
     expect(createWheelSteps('mac', () => 0.25)(event(4))).toEqual({ kind: 'pan', dx: 0, dy: 8 })
   })
 
-  test('zooms a vertical workbench scroll at the mouse wheel rate and honors zoom speed', () => {
+  test('uses fixed ratios for unmodified vertical workbench scrolls', () => {
     const step = createWheelSteps('mac', () => 0.5, 'zoom')
-    expect(zoomScale(step(event(40)))).toBeCloseTo(Math.exp(-0.1))
+    expect(zoomScale(step(event(-40)))).toBe(1.1)
+    expect(zoomScale(step(event(4)))).toBe(0.9)
     expect(step(event(50, { deltaX: 100 }))).toEqual(
       createWheelSteps('mac')(event(50, { deltaX: 100 }))
     )
-    expect(zoomScale(createWheelSteps('windows', () => 1, 'zoom')(notch(0)))).toBeCloseTo(
-      Math.exp(-0.04)
-    )
+    const windows = createWheelSteps('windows', () => 1, 'zoom')
+    expect(zoomScale(windows(notch(0)))).toBe(0.9)
+    expect(zoomScale(windows(notch(30)))).toBe(0.9)
   })
 
   test('steps one preset along the dominant Shift+wheel axis in workbench mode', () => {

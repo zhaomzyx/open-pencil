@@ -39,26 +39,23 @@ test.describe('Zoom and pan', () => {
     await helper.page.close()
   })
 
-  test('vertical wheel zooms without a modifier', async () => {
-    const before = await helper.page.evaluate(() => {
-      const store = window.openPencil?.getStore?.()
-      if (!store) throw new Error('OpenPencil store not initialized')
-      return { panX: store.state.panX, panY: store.state.panY, zoom: store.state.zoom }
-    })
-
+  test('vertical wheel applies the workbench zoom ratios without a modifier', async () => {
+    const readZoom = () =>
+      helper.page.evaluate(() => {
+        const store = window.openPencil?.getStore?.()
+        if (!store) throw new Error('OpenPencil store not initialized')
+        return store.state.zoom
+      })
+    const before = await readZoom()
     const box = expectDefined(await helper.canvas.boundingBox(), 'canvas bounds')
     await helper.page.mouse.move(box.x + 400, box.y + 300)
+
     await helper.page.mouse.wheel(0, -100)
-    await helper.waitForRender()
-    await helper.page.waitForTimeout(50)
+    await expect.poll(readZoom).toBeCloseTo(before * 1.1, 10)
 
-    const after = await helper.page.evaluate(() => {
-      const store = window.openPencil?.getStore?.()
-      if (!store) throw new Error('OpenPencil store not initialized')
-      return { panX: store.state.panX, panY: store.state.panY, zoom: store.state.zoom }
-    })
-
-    expect(after.zoom).toBeGreaterThan(before.zoom)
+    const afterZoomIn = await readZoom()
+    await helper.page.mouse.wheel(0, 100)
+    await expect.poll(readZoom).toBeCloseTo(afterZoomIn * 0.9, 10)
     helper.assertNoErrors()
   })
 
